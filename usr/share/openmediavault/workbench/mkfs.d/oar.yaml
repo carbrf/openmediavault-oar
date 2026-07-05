@@ -1,5 +1,0 @@
-version: "1.0"
-type: mkfs
-data:
-  text: "Open Adaptive RAID (OAR-1)"
-  url: /storage/filesystems/oar/create

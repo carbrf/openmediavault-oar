@@ -73,8 +73,7 @@ data:
         prop: disks
         flexGrow: 2
         sortable: false
-        cellTemplateName: template
-        cellTemplateConfig: '<ul class="omv-datatable-template-unsorted-list">{% for disk in disks %}<li>{{ disk.devicefile }}</li>{% endfor %}</ul>'
+        hidden: true
       - name: _("Pending finalize")
         prop: pending_finalize
         flexGrow: 1
