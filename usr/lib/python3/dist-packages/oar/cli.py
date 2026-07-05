@@ -476,13 +476,23 @@ def _finalize_pool(state: sysinfo.SystemState, pool: str) -> None:
                 shutil.rmtree(tmpdir, ignore_errors=True)
     elif fstype == "f2fs":
         executor.run_steps(
-            [Step(("resize.f2fs", lv_dev_path), "grow f2fs", check=False)]
+            [Step(("resize.f2fs", lv_dev_path), "grow f2fs")]
         )
     elif fstype == "jfs":
         if mountpoint:
             executor.run_steps(
-                [Step(("mount", "-o", "remount,resize", mountpoint), "grow jfs", check=False)]
+                [Step(("mount", "-o", "remount,resize", mountpoint), "grow jfs")]
             )
+        else:
+            tmpdir = tempfile.mkdtemp(prefix="oar-finalize-")
+            try:
+                executor.run_steps([
+                    Step(("mount", lv_dev_path, tmpdir), "mount for resize"),
+                    Step(("mount", "-o", "remount,resize", tmpdir), "grow jfs"),
+                    Step(("umount", tmpdir), "unmount"),
+                ])
+            finally:
+                shutil.rmtree(tmpdir, ignore_errors=True)
     executor.run_steps(
         [
             Step(
@@ -502,21 +512,11 @@ def cmd_scrub(args: argparse.Namespace) -> int:
     for index, tier in sorted(tiers.items()):
         if tier.md is None:
             continue
-    elif fstype == "jfs":
-        if mountpoint:
-            executor.run_steps(
-                [Step(("mount", "-o", "remount,resize", mountpoint), "grow jfs")]
-            )
-        else:
-            tmpdir = tempfile.mkdtemp(prefix="oar-finalize-")
-            try:
-                executor.run_steps([
-                    Step(("mount", lv_dev_path, tmpdir), "mount for resize"),
-                    Step(("mount", "-o", "remount,resize", tmpdir), "grow jfs"),
-                    Step(("umount", tmpdir), "unmount"),
-                ])
-            finally:
-                shutil.rmtree(tmpdir, ignore_errors=True)
+        steps.append(
+            Step(
+                (
+                    "sh",
+                    "-c",
                     "echo check > /sys/block/%s/md/sync_action"
                     % tier.md.kname,
                 ),
