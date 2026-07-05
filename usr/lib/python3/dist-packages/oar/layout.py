@@ -446,7 +446,7 @@ def plan_create(pool: str, disks: Sequence[Disk], fs: str = "btrfs") -> Plan:
         "ext4": ("mkfs.ext4", "-L", pool, lv_dev),
         "xfs": ("mkfs.xfs", "-f", "-L", pool, lv_dev),
         "f2fs": ("mkfs.f2fs", "-l", pool, lv_dev),
-        "jfs": ("mkfs.jfs", "-L", pool, lv_dev),
+        "jfs": ("mkfs.jfs", "-q", "-L", pool, lv_dev),
     }[fs]
     steps.append(Step(mkfs_cmd, "create %s filesystem" % fs))
     return Plan(steps=tuple(steps), layout=layout)
