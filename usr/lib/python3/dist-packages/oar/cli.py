@@ -459,6 +459,30 @@ def _finalize_pool(state: sysinfo.SystemState, pool: str) -> None:
         executor.run_steps(
             [Step(("resize2fs", lv_dev_path), "grow ext4")]
         )
+    elif fstype == "xfs":
+        if mountpoint:
+            executor.run_steps(
+                [Step(("xfs_growfs", mountpoint), "grow xfs")]
+            )
+        else:
+            tmpdir = tempfile.mkdtemp(prefix="oar-finalize-")
+            try:
+                executor.run_steps([
+                    Step(("mount", lv_dev_path, tmpdir), "mount for resize"),
+                    Step(("xfs_growfs", tmpdir), "grow xfs"),
+                    Step(("umount", tmpdir), "unmount"),
+                ])
+            finally:
+                shutil.rmtree(tmpdir, ignore_errors=True)
+    elif fstype == "f2fs":
+        executor.run_steps(
+            [Step(("resize.f2fs", lv_dev_path), "grow f2fs", check=False)]
+        )
+    elif fstype == "jfs":
+        if mountpoint:
+            executor.run_steps(
+                [Step(("mount", "-o", "remount,resize", mountpoint), "grow jfs", check=False)]
+            )
     executor.run_steps(
         [
             Step(
@@ -578,7 +602,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=PROG,
         description="Manage Open Adaptive RAID (OAR) storage pools "
-        "(GPT slices -> mdadm RAID5 tiers -> LVM -> btrfs/ext4).",
+        "(GPT slices -> mdadm RAID5 tiers -> LVM -> btrfs/ext4/xfs/f2fs/jfs).",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -596,7 +620,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("create", help="create a pool")
     p.add_argument("--json", action="store_true")
-    p.add_argument("--fs", choices=("btrfs", "ext4"), default="btrfs")
+    p.add_argument("--fs", choices=("btrfs", "ext4", "xfs", "f2fs", "jfs"), default="btrfs")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("pool", metavar="POOL")
     p.add_argument("devices", nargs="+", metavar="DEV")

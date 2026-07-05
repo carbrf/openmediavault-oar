@@ -320,7 +320,7 @@ class Oar extends \OMV\Rpc\ServiceAbstract
      * @param params The method parameters.
      *   \em name The name of the pool.
      *   \em devices The devices to be used.
-     *   \em fs The file system to create, e.g. btrfs or ext4.
+     *   \em fs The file system to create, e.g. btrfs, ext4, xfs, f2fs, or jfs.
      * @param context The context of the caller.
      * @return The name of the background process status file.
      * @throw \OMV\Exception

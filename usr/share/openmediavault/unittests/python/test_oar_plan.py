@@ -209,7 +209,7 @@ class GoldenCreateTestCase(unittest.TestCase):
             plan_create(
                 "tank",
                 [Disk("/dev/sdb", 10 * GiB), Disk("/dev/sdc", 10 * GiB)],
-                fs="xfs",
+                fs="zfs",
             )
         with self.assertRaises(LayoutError):  # bad name
             plan_create(

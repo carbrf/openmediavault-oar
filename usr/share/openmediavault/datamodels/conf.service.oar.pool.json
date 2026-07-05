@@ -15,7 +15,10 @@
 			"type": "string",
 			"enum": [
 				"btrfs",
-				"ext4"
+				"ext4",
+				"xfs",
+				"f2fs",
+				"jfs"
 			]
 		},
 		"devices": {

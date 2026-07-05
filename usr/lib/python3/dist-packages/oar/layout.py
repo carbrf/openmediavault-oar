@@ -396,7 +396,7 @@ def plan_create(pool: str, disks: Sequence[Disk], fs: str = "btrfs") -> Plan:
     """Full pipeline: wipe, partition, mdadm --create per tier, pvcreate,
     vgcreate, lvcreate, mkfs."""
     validate_pool_name(pool)
-    if fs not in ("btrfs", "ext4"):
+    if fs not in ("btrfs", "ext4", "xfs", "f2fs", "jfs"):
         raise LayoutError("unsupported filesystem: %s" % fs)
     if len(disks) < 2:
         raise LayoutError("at least two disks are required")
@@ -441,17 +441,14 @@ def plan_create(pool: str, disks: Sequence[Disk], fs: str = "btrfs") -> Plan:
         )
     )
     lv_dev = "/dev/%s/data" % pool
-    if fs == "btrfs":
-        steps.append(
-            Step(
-                ("mkfs.btrfs", "-L", pool, "-d", "single", "-m", "dup", lv_dev),
-                "create btrfs filesystem",
-            )
-        )
-    else:
-        steps.append(
-            Step(("mkfs.ext4", "-L", pool, lv_dev), "create ext4 filesystem")
-        )
+    mkfs_cmd = {
+        "btrfs": ("mkfs.btrfs", "-L", pool, "-d", "single", "-m", "dup", lv_dev),
+        "ext4": ("mkfs.ext4", "-L", pool, lv_dev),
+        "xfs": ("mkfs.xfs", "-f", "-L", pool, lv_dev),
+        "f2fs": ("mkfs.f2fs", "-l", pool, lv_dev),
+        "jfs": ("mkfs.jfs", "-L", pool, lv_dev),
+    }[fs]
+    steps.append(Step(mkfs_cmd, "create %s filesystem" % fs))
     return Plan(steps=tuple(steps), layout=layout)
 
 

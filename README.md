@@ -5,7 +5,7 @@ Expandable, mixed-drive-size storage pools with single-parity redundancy for
 
 ```
 disks → GPT slices per size tier → mdadm RAID5 per tier (PPL write-hole
-protection) → LVM volume group → single logical volume → Btrfs or EXT4
+protection) → LVM volume group → single logical volume → Btrfs, EXT4, XFS, F2FS or JFS
 ```
 
 Every component is standard, mature Linux storage infrastructure (mdadm, LVM2,
@@ -114,7 +114,7 @@ command plan without executing):
 ```
 omv-oar candidates --json          # unused disks
 omv-oar preview --json DEV...      # capacity calculator
-omv-oar create [--fs btrfs|ext4] POOL DEV...
+omv-oar create [--fs btrfs|ext4|xfs|f2fs|jfs] POOL DEV...
 omv-oar status --json [POOL]
 omv-oar detail POOL
 omv-oar grow POOL DEV...
