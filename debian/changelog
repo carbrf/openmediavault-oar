@@ -1,3 +1,11 @@
+openmediavault-oar (8.0.0-2) stable; urgency=low
+
+  * Lower version dependency to openmediavault (>= 7.0.0) to support
+    OMV 7.x installations; all framework APIs used by the plugin are
+    stable across OMV 7 and 8.
+
+ -- carbrf <carbrf@gmail.com>  Sun, 05 Jul 2026 17:00:00 -0400
+
 openmediavault-oar (8.0.0-1) stable; urgency=low
 
   * Initial release.
