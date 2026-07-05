@@ -29,9 +29,41 @@ fakeroot debian/rules clean binary
 
 ### 2. Install it on the OMV host
 
+Two ways to do this — pick one.
+
+**Option A — `apt-get` directly (simplest):**
+
 ```sh
 sudo apt-get install ./openmediavault-oar_<version>_all.deb
 ```
+
+**Option B — through the OMV *System → Plugins* page** (same page official
+and community plugins install from; no extra repository hosting needed —
+OMV ships a local package archive for exactly this purpose):
+
+```sh
+# On the OMV host, as root:
+sudo cp openmediavault-oar_<version>_all.deb /var/cache/openmediavault/archives/
+cd /var/cache/openmediavault/archives
+sudo apt-ftparchive packages . > Packages
+sudo apt-ftparchive release . > Release
+```
+
+Then in the web UI: **System → Plugins → ⟳ "Check for new plugins"** (runs
+`apt-get update`, which regenerates OMV's plugin index) — `openmediavault-oar`
+now appears in the list like any other plugin. Select it and click **Install**;
+OMV runs the `apt-get install` for you, correctly pulling in the package's
+dependencies (`openmediavault-md`, `lvm2`, `mdadm`, `gdisk`, `btrfs-progs`,
+etc.). Uninstall works the same way, in reverse, from that page.
+
+This works because `/etc/apt/sources.list.d/openmediavault-local.list` (shipped
+by OMV core) already points apt at `/var/cache/openmediavault/archives` as a
+trusted local repository, and the *Plugins* page's list is just `apt`'s view of
+every installed/available `openmediavault-*` package — it isn't restricted to
+an official or curated repository. Re-run the three commands above (with a
+version-bumped `.deb`) any time you rebuild, and "Check for new plugins" will
+also surface it as an *upgrade* on the *Update Management* page if a version
+is already installed.
 
 That is all. The package's install hooks automatically:
 
