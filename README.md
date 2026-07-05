@@ -17,64 +17,45 @@ system, with or without this plugin installed.
 The plugin is a standard Debian package and can be installed on an existing,
 already-running OMV 8.x installation at any time. No reinstall, no reboot.
 
-### 1. Build the package (on any Debian/OMV machine)
+### Install
+
+```sh
+wget https://github.com/carbrf/openmediavault-oar/releases/latest/download/openmediavault-oar_8.0.0-1_all.deb
+sudo apt-get install ./openmediavault-oar_8.0.0-1_all.deb
+```
+
+That's it. The package's install hooks automatically restart `omv-engined`
+(loads the RPC service), rebuild the workbench UI (adds the navigation entry
+and the *File Systems → Create* menu item), and enable the boot-time
+`omv-oar-finalize.service` unit. Reload the browser tab afterwards.
+
+### Prefer installing from the OMV UI instead of the command line?
+
+*System → Plugins* is where official and community plugins install from, and
+it works for this one too — OMV ships a local trusted package archive for
+exactly this purpose, no extra repository hosting needed:
+
+```sh
+# on the OMV host, as root
+sudo wget -P /var/cache/openmediavault/archives \
+  https://github.com/carbrf/openmediavault-oar/releases/latest/download/openmediavault-oar_8.0.0-1_all.deb
+cd /var/cache/openmediavault/archives && sudo apt-ftparchive packages . > Packages && sudo apt-ftparchive release . > Release
+```
+
+Then in the web UI: **System → Plugins → ⟳ "Check for new plugins"**, select
+`openmediavault-oar`, click **Install**. Uninstall works the same way from
+the same page. Re-run the two commands above with a newer release any time
+you want to upgrade — it'll show up as an update on that page too.
+
+### Building it yourself instead
 
 ```sh
 sudo apt-get install debhelper fakeroot gettext
 git clone https://github.com/carbrf/openmediavault-oar.git
 cd openmediavault-oar
 fakeroot debian/rules clean binary
-# result: ../openmediavault-oar_<version>_all.deb
+# result: ../openmediavault-oar_<version>_all.deb — install with either method above
 ```
-
-### 2. Install it on the OMV host
-
-Two ways to do this — pick one.
-
-**Option A — `apt-get` directly (simplest):**
-
-```sh
-sudo apt-get install ./openmediavault-oar_<version>_all.deb
-```
-
-**Option B — through the OMV *System → Plugins* page** (same page official
-and community plugins install from; no extra repository hosting needed —
-OMV ships a local package archive for exactly this purpose):
-
-```sh
-# On the OMV host, as root:
-sudo cp openmediavault-oar_<version>_all.deb /var/cache/openmediavault/archives/
-cd /var/cache/openmediavault/archives
-sudo apt-ftparchive packages . > Packages
-sudo apt-ftparchive release . > Release
-```
-
-Then in the web UI: **System → Plugins → ⟳ "Check for new plugins"** (runs
-`apt-get update`, which regenerates OMV's plugin index) — `openmediavault-oar`
-now appears in the list like any other plugin. Select it and click **Install**;
-OMV runs the `apt-get install` for you, correctly pulling in the package's
-dependencies (`openmediavault-md`, `lvm2`, `mdadm`, `gdisk`, `btrfs-progs`,
-etc.). Uninstall works the same way, in reverse, from that page.
-
-This works because `/etc/apt/sources.list.d/openmediavault-local.list` (shipped
-by OMV core) already points apt at `/var/cache/openmediavault/archives` as a
-trusted local repository, and the *Plugins* page's list is just `apt`'s view of
-every installed/available `openmediavault-*` package — it isn't restricted to
-an official or curated repository. Re-run the three commands above (with a
-version-bumped `.deb`) any time you rebuild, and "Check for new plugins" will
-also surface it as an *upgrade* on the *Update Management* page if a version
-is already installed.
-
-That is all. The package's install hooks automatically:
-
-- restart `omv-engined` so the new RPC service is loaded
-  (`triggers: activate restart-engined`),
-- rebuild the workbench UI configuration (`dpkg-trigger update-workbench`),
-  which adds the navigation entry and the *File Systems → Create* menu item,
-- enable the boot-time `omv-oar-finalize.service` unit that resumes
-  interrupted pool expansions after a reboot.
-
-Reload the browser tab once after installation.
 
 ### Surviving system updates
 
@@ -82,8 +63,8 @@ Reload the browser tab once after installation.
   `omv-upgrade` and unattended upgrades never remove manually installed
   packages. Its files live in plugin-owned paths and are never touched by
   core updates.
-- **OMV major release upgrades** (e.g. 8 → 9): rebuild the package once
-  against the new release (step 1) and install it again. This is the same
+- **OMV major release upgrades** (e.g. 8 → 9): grab the matching release (or
+  rebuild against the new OMV version) and install it again. This is the same
   rule that applies to every OMV plugin (`Depends: openmediavault (>= 8.5.0)`).
 - **Your data does not depend on the plugin.** Pools are self-describing:
   GPT partition labels (`oar:<pool>:t<NN>`), mdadm superblocks and LVM
