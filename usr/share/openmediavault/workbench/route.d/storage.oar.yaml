@@ -1,0 +1,6 @@
+version: "1.0"
+type: route
+data:
+  url: "/storage/oar"
+  title: _("Open Adaptive RAID")
+  component: omv-storage-oar-datatable-page

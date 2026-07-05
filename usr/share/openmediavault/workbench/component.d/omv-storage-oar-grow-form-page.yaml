@@ -1,0 +1,57 @@
+version: "1.0"
+type: component
+data:
+  name: omv-storage-oar-grow-form-page
+  type: formPage
+  config:
+    fields:
+      - type: textInput
+        name: pool
+        label: _("Pool")
+        disabled: true
+        submitValue: false
+        value: '{{ _routeParams.name }}'
+      - type: hidden
+        name: name
+        value: '{{ _routeParams.name }}'
+      - type: select
+        name: devices
+        label: _("Devices")
+        placeholder: _("Select devices ...")
+        hint: _("Select devices to be added to the pool. New devices join existing tiers where they fit; remaining space forms new tiers. All selected devices will be erased. The pool stays online; capacity becomes available when the background expansion finishes.")
+        multiple: true
+        valueField: devicefile
+        textField: description
+        store:
+          proxy:
+            service: Oar
+            get:
+              method: getCandidates
+          sorters:
+            - dir: asc
+              prop: devicefile
+        validators:
+          required: true
+    buttons:
+      - template: submit
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Grow Open Adaptive RAID pool")
+              width: 75%
+              startOnInit: true
+              request:
+                service: Oar
+                method: grow
+                params:
+                  name: '{{ name }}'
+                  devices: '{{ devices }}'
+              buttons:
+                stop:
+                  hidden: true
+            successUrl: /storage/oar
+      - template: cancel
+        execute:
+          type: url
+          url: '/storage/oar'

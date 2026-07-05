@@ -1,0 +1,7 @@
+version: "1.0"
+type: route
+data:
+  url: "/storage/oar/replace/:name"
+  title: "{{ 'Replace device' | translate }} @ {{ _routeParams.name | decodeuricomponent }}"
+  editing: false
+  component: omv-storage-oar-replace-form-page

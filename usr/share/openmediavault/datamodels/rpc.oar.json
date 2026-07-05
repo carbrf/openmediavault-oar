@@ -1,0 +1,159 @@
+[{
+	"type": "rpc",
+	"id": "rpc.oar.get",
+	"params": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"pattern": "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$",
+				"required": true
+			}
+		}
+	}
+},{
+	"type": "rpc",
+	"id": "rpc.oar.preview",
+	"params": {
+		"type": "object",
+		"properties": {
+			"devices": {
+				"type": "string",
+				"required": true
+			}
+		}
+	}
+},{
+	"type": "rpc",
+	"id": "rpc.oar.create",
+	"params": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"pattern": "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$",
+				"required": true
+			},
+			"devices": {
+				"type": "string",
+				"required": true
+			},
+			"fs": {
+				"type": "string",
+				"enum": [
+					"btrfs",
+					"ext4"
+				],
+				"required": true
+			}
+		}
+	}
+},{
+	"type": "rpc",
+	"id": "rpc.oar.grow",
+	"params": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"pattern": "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$",
+				"required": true
+			},
+			"devices": {
+				"type": "string",
+				"required": true
+			}
+		}
+	}
+},{
+	"type": "rpc",
+	"id": "rpc.oar.replace",
+	"params": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"pattern": "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$",
+				"required": true
+			},
+			"olddevice": {
+				"type": "string",
+				"required": true
+			},
+			"newdevice": {
+				"type": "string",
+				"format": "devicefile",
+				"required": true
+			}
+		}
+	}
+},{
+	"type": "rpc",
+	"id": "rpc.oar.finalize",
+	"params": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"pattern": "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$",
+				"required": true
+			}
+		}
+	}
+},{
+	"type": "rpc",
+	"id": "rpc.oar.getdisks",
+	"params": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"pattern": "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$",
+				"required": true
+			}
+		}
+	}
+},{
+	"type": "rpc",
+	"id": "rpc.oar.delete",
+	"params": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"pattern": "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$",
+				"required": true
+			},
+			"force": {
+				"type": "boolean",
+				"required": true
+			}
+		}
+	}
+},{
+	"type": "rpc",
+	"id": "rpc.oar.scrub",
+	"params": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"pattern": "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$",
+				"required": true
+			}
+		}
+	}
+},{
+	"type": "rpc",
+	"id": "rpc.oar.getdetail",
+	"params": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"type": "string",
+				"pattern": "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$",
+				"required": true
+			}
+		}
+	}
+}]

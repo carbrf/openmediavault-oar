@@ -1,0 +1,8 @@
+version: "1.0"
+type: navigation-item
+data:
+  path: "storage.oar"
+  position: 35
+  text: _("Open Adaptive RAID")
+  icon: "mdi:database-plus"
+  url: "/storage/oar"

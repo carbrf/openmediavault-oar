@@ -1,0 +1,12 @@
+# This file is part of OpenMediaVault.
+[Unit]
+Description=Finalize pending OAR pool expansions
+After=mdmonitor.service lvm2-monitor.service local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/omv-oar finalize --all
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

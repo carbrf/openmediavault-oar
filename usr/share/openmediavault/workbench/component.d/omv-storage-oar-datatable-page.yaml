@@ -1,0 +1,186 @@
+version: "1.0"
+type: component
+data:
+  name: omv-storage-oar-datatable-page
+  type: datatablePage
+  config:
+    autoReload: 10000
+    stateId: a0506cfb-912c-4ea9-8d35-edc521555d9a
+    sorters:
+      - dir: asc
+        prop: name
+    store:
+      proxy:
+        service: Oar
+        get:
+          method: getList
+    rowEnumFmt: '{{ name }}'
+    columns:
+      - name: _("Name")
+        prop: name
+        flexGrow: 1
+        sortable: true
+      - name: _("State")
+        prop: state
+        flexGrow: 1
+        sortable: true
+        cellTemplateName: chip
+        cellTemplateConfig:
+          map:
+            online:
+              value: _("Online")
+              class: "omv-background-color-pair-success"
+            checking:
+              value: _("Checking")
+              class: "omv-background-color-pair-info"
+            expanding:
+              value: _("Expanding")
+              class: "omv-background-color-pair-orange"
+            rebuilding:
+              value: _("Rebuilding")
+              class: "omv-background-color-pair-orange"
+            degraded:
+              value: _("Degraded")
+              class: "omv-background-color-pair-warning"
+            failed:
+              value: _("Failed")
+              class: "omv-background-color-pair-error"
+      - name: _("Activity")
+        prop: activity
+        flexGrow: 1
+        sortable: false
+      - name: _("Device")
+        prop: devicefile
+        flexGrow: 1
+        sortable: true
+      - name: _("Capacity")
+        prop: size
+        flexGrow: 1
+        sortable: true
+        cellTemplateName: binaryUnit
+      - name: _("Free")
+        prop: free
+        flexGrow: 1
+        sortable: true
+        cellTemplateName: binaryUnit
+      - name: _("Unallocatable")
+        prop: unallocatable
+        flexGrow: 1
+        sortable: true
+        hidden: true
+        cellTemplateName: binaryUnit
+      - name: _("Disks")
+        prop: disks
+        flexGrow: 2
+        sortable: false
+        cellTemplateName: template
+        cellTemplateConfig: '<ul class="omv-datatable-template-unsorted-list">{% for disk in disks %}<li>{{ disk.devicefile }}</li>{% endfor %}</ul>'
+      - name: _("Pending finalize")
+        prop: pending_finalize
+        flexGrow: 1
+        sortable: true
+        hidden: true
+        cellTemplateName: checkIcon
+      - name: _("Referenced")
+        prop: _used
+        flexGrow: 1
+        sortable: true
+        hidden: true
+        cellTemplateName: checkIcon
+    actions:
+      - template: create
+        execute:
+          type: url
+          url: '/storage/oar/create'
+      - type: iconButton
+        icon: expand
+        tooltip: _("Grow")
+        enabledConstraints:
+          minSelected: 1
+          maxSelected: 1
+          constraint:
+            - operator: in
+              arg0:
+                prop: state
+              arg1:
+                - online
+                - checking
+        execute:
+          type: url
+          url: '/storage/oar/grow/{{ _selected[0].name | encodeuricomponent }}'
+      - type: iconButton
+        icon: mdi:swap-horizontal
+        tooltip: _("Replace/repair device")
+        enabledConstraints:
+          minSelected: 1
+          maxSelected: 1
+          constraint:
+            - operator: in
+              arg0:
+                prop: state
+              arg1:
+                - online
+                - checking
+                - degraded
+        execute:
+          type: url
+          url: '/storage/oar/replace/{{ _selected[0].name | encodeuricomponent }}'
+      - type: iconButton
+        icon: mdi:progress-wrench
+        tooltip: _("Finalize expansion")
+        enabledConstraints:
+          minSelected: 1
+          maxSelected: 1
+          constraint:
+            - operator: truthy
+              arg0:
+                prop: pending_finalize
+        confirmationDialogConfig:
+          template: confirmation
+          message: _("Do you really want to start the finalization of the pending expansion? This waits for running reshapes, restores the write-hole protection and grows the file system. It runs in the background and is normally started automatically; use this if it did not.")
+        execute:
+          type: request
+          request:
+            service: Oar
+            method: finalize
+            params:
+              name: '{{ name }}'
+      - type: iconButton
+        icon: mdi:magnify-scan
+        tooltip: _("Scrub")
+        enabledConstraints:
+          minSelected: 1
+          maxSelected: 1
+        confirmationDialogConfig:
+          template: confirmation
+          message: _("Do you really want to start a scrub on the selected pool? Parity of all arrays will be verified in the background.")
+        execute:
+          type: request
+          request:
+            service: Oar
+            method: scrub
+            params:
+              name: '{{ name }}'
+      - type: iconButton
+        icon: details
+        tooltip: _("Show details")
+        enabledConstraints:
+          minSelected: 1
+          maxSelected: 1
+        execute:
+          type: url
+          url: '/storage/oar/details/{{ _selected[0].name | encodeuricomponent }}'
+      - template: delete
+        enabledConstraints:
+          constraint:
+            - operator: falsy
+              arg0:
+                prop: _used
+        execute:
+          type: request
+          request:
+            service: Oar
+            method: delete
+            params:
+              name: '{{ name }}'
+              force: false

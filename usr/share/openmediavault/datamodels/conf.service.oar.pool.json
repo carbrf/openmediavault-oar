@@ -1,0 +1,28 @@
+{
+	"type": "config",
+	"id": "conf.service.oar.pool",
+	"title": "Open Adaptive RAID pool",
+	"persistent": false,
+	"properties": {
+		"name": {
+			"type": "string"
+		},
+		"devicefile": {
+			"type": "string",
+			"format": "devicefile"
+		},
+		"fs": {
+			"type": "string",
+			"enum": [
+				"btrfs",
+				"ext4"
+			]
+		},
+		"devices": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		}
+	}
+}

@@ -1,0 +1,7 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Contact: OpenMediaVault Plugin Developers <plugins@openmediavault.org>
+Source: https://www.openmediavault.org
+
+Files: *
+Copyright: 2026 OpenMediaVault Plugin Developers <plugins@openmediavault.org>
+License: GPL-3+

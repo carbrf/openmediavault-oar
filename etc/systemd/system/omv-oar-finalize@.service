@@ -1,0 +1,9 @@
+# This file is part of OpenMediaVault.
+[Unit]
+Description=Finalize OAR pool expansion (%i)
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/omv-oar finalize %i
+TimeoutStartSec=infinity

@@ -1,0 +1,80 @@
+version: "1.0"
+type: component
+data:
+  name: omv-storage-oar-replace-form-page
+  type: formPage
+  config:
+    hints:
+      - type: info
+        text: _("Replaces a member device of the pool. A healthy device is hot-replaced (redundancy is kept during the copy). A failed or missing device is rebuilt from parity onto the new device. The new device must be at least as large as the allocated space of the old one; extra capacity is used to expand the pool where possible.")
+        dismissible: true
+        stateId: 3f0a86e1-6d05-4c53-9e6a-25a3a29c7e5b
+    fields:
+      - type: textInput
+        name: pool
+        label: _("Pool")
+        disabled: true
+        submitValue: false
+        value: '{{ _routeParams.name }}'
+      - type: hidden
+        name: name
+        value: '{{ _routeParams.name }}'
+      - type: select
+        name: olddevice
+        label: _("Device to replace")
+        placeholder: _("Select the old device ...")
+        valueField: devicefile
+        textField: description
+        store:
+          proxy:
+            service: Oar
+            get:
+              method: getDisks
+              params:
+                name: '{{ _routeParams.name }}'
+          sorters:
+            - dir: asc
+              prop: devicefile
+        validators:
+          required: true
+      - type: select
+        name: newdevice
+        label: _("Replacement device")
+        placeholder: _("Select the new device ...")
+        hint: _("The replacement device will be erased.")
+        valueField: devicefile
+        textField: description
+        store:
+          proxy:
+            service: Oar
+            get:
+              method: getCandidates
+          sorters:
+            - dir: asc
+              prop: devicefile
+        validators:
+          required: true
+    buttons:
+      - template: submit
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Replace device")
+              width: 75%
+              startOnInit: true
+              request:
+                service: Oar
+                method: replace
+                params:
+                  name: '{{ name }}'
+                  olddevice: '{{ olddevice }}'
+                  newdevice: '{{ newdevice }}'
+              buttons:
+                stop:
+                  hidden: true
+            successUrl: /storage/oar
+      - template: cancel
+        execute:
+          type: url
+          url: '/storage/oar'

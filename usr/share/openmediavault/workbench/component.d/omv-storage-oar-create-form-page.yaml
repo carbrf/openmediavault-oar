@@ -1,0 +1,89 @@
+version: "1.0"
+type: component
+data:
+  name: omv-storage-oar-create-form-page
+  type: formPage
+  config:
+    hints:
+      - type: info
+        text: _("A Open Adaptive RAID pool combines devices of different sizes into a single expandable volume that tolerates the failure of one device. Each device is sliced into size tiers protected by RAID5 arrays with write-hole protection. Usable capacity &asymp; total &minus; largest device. If a device is not listed here, it usually already contains a file system or partitions; please <a href='#/storage/disks'>wipe</a> the device first.")
+        dismissible: true
+        stateId: 7d4b6ff2-59a3-4920-a2b6-4e17dcbbbdad
+    fields:
+      - type: textInput
+        name: type
+        label: _("Type")
+        disabled: true
+        value: "Open Adaptive RAID (OAR-1)"
+        submitValue: false
+      - type: textInput
+        name: name
+        label: _("Name")
+        value: ""
+        hint: _("The name of the pool.")
+        validators:
+          required: true
+          pattern:
+            pattern: "^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$"
+            errorData: _("The name must start with a letter and may only contain letters, digits and the characters '+', '_', '.' and '-'.")
+      - type: select
+        name: fs
+        label: _("File system")
+        value: btrfs
+        store:
+          data:
+            - - btrfs
+              - _("Btrfs")
+            - - ext4
+              - _("EXT4")
+      - type: select
+        name: devices
+        label: _("Devices")
+        placeholder: _("Select devices ...")
+        hint: _("Select the devices that will be used to create the pool. All selected devices will be erased.")
+        multiple: true
+        valueField: devicefile
+        textField: description
+        store:
+          proxy:
+            service: Oar
+            get:
+              method: getCandidates
+          sorters:
+            - dir: asc
+              prop: devicefile
+        validators:
+          required: true
+          custom:
+            - constraint:
+                operator: '>='
+                arg0:
+                  operator: length
+                  arg0:
+                    prop: devices
+                arg1: 2
+              errorData: _("At least two devices are required.")
+    buttons:
+      - template: submit
+        execute:
+          type: taskDialog
+          taskDialog:
+            config:
+              title: _("Create Open Adaptive RAID pool")
+              width: 75%
+              startOnInit: true
+              request:
+                service: Oar
+                method: create
+                params:
+                  name: '{{ name }}'
+                  fs: '{{ fs }}'
+                  devices: '{{ devices }}'
+              buttons:
+                stop:
+                  hidden: true
+            successUrl: /storage/filesystems/mount
+      - template: cancel
+        execute:
+          type: url
+          url: '/storage/oar'
