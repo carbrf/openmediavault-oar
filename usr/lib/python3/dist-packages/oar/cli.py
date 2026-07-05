@@ -577,7 +577,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=PROG,
-        description="Manage OAR OAR storage pools "
+        description="Manage Open Adaptive RAID (OAR) storage pools "
         "(GPT slices -> mdadm RAID5 tiers -> LVM -> btrfs/ext4).",
     )
     sub = parser.add_subparsers(dest="command", required=True)

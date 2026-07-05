@@ -86,8 +86,8 @@ class UsableTestCase(unittest.TestCase):
 
 
 class ReferenceTestCase(unittest.TestCase):
-    """The four capacity cases validated against the OAR-1
-    calculator (single parity)."""
+    """The four OAR-1 reference capacity cases (single parity:
+    usable = sum over tiers of (members - 1) x height)."""
 
     def capacity(self, *sizes_tib):
         lay = compute_tiers(disks(*[s * TiB for s in sizes_tib]))

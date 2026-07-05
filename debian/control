@@ -11,7 +11,7 @@ Package: openmediavault-oar
 Architecture: all
 Depends: openmediavault (>= 8.5.0), openmediavault-md, lvm2, mdadm, gdisk, btrfs-progs, e2fsprogs, util-linux, python3 (>= 3.11)
 Priority: optional
-Description: openmediavault Open Adaptive RAID (OAR storage pool) plugin
+Description: openmediavault Open Adaptive RAID (OAR) plugin
  This plugin is used to create, manage, and monitor Open Adaptive RAID storage
  pools. A pool combines disks of mixed sizes into a single expandable
  volume that tolerates the failure of one disk. Each disk is sliced into

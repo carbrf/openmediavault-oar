@@ -377,7 +377,7 @@ def pool_names(state: SystemState) -> List[str]:
 
 
 def pool_tiers(state: SystemState, pool: str) -> Dict[int, TierState]:
-    """Tier discovery: partlabels 'hr:<pool>:t<NN>' + their md children."""
+    """Tier discovery: partlabels 'oar:<pool>:t<NN>' + their md children."""
     tiers: Dict[int, TierState] = {}
     for dev in state.devices:
         m = PARTLABEL_RE.match(dev.partlabel)

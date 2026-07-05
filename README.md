@@ -69,7 +69,7 @@ name, filesystem (Btrfs recommended) and two or more disks of any sizes. A
 progress dialog streams the creation; afterwards you land on the standard
 *Mount* page to mount the new filesystem and use it for shared folders as usual.
 
-(The same form is available under *Storage → OAR → Create*.)
+(The same form is available under *Storage → Open Adaptive RAID → Create*.)
 
 Capacity rule of thumb: usable ≈ total − largest disk. Space that cannot be
 protected yet (e.g. the top of a single largest disk) is reported as
@@ -78,7 +78,7 @@ that tier.
 
 ### Manage a pool
 
-*Storage → OAR* lists every pool with live state
+*Storage → Open Adaptive RAID* lists every pool with live state
 (**Online / Checking / Expanding / Rebuilding / Degraded / Failed**), a
 running-activity column (e.g. `reshape (42%)`), capacity, free space,
 unallocatable space and member disks. Buttons:
@@ -114,7 +114,7 @@ omv-oar delete [--force] POOL
 
 1. The pool shows **Degraded** (mdmonitor also sends the usual email
    notifications via the openmediavault-md plugin). Data stays available.
-2. *Storage → OAR → Replace/repair device*: choose the failed or
+2. *Storage → Open Adaptive RAID → Replace/repair device*: choose the failed or
    `missing` entry as the device to replace and the new disk. The rebuild
    runs in the background (**Rebuilding**); the pool returns to **Online**
    when done. A larger replacement automatically expands the pool where
