@@ -1,4 +1,4 @@
-openmediavault-oar (8.1.0~beta1-1) UNRELEASED; urgency=low
+openmediavault-oar (8.1.0~beta1-1) stable; urgency=low
 
   * Beta release — pre-release for testing; correctly lists all filesystem
     types in the create form, fixes OMV 7 display issues, supports XFS/F2FS/JFS.
