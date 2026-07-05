@@ -21,7 +21,8 @@ already-running OMV 8.x installation at any time. No reinstall, no reboot.
 
 ```sh
 sudo apt-get install debhelper fakeroot gettext
-cd openmediavault/deb/openmediavault-oar
+git clone https://github.com/carbrf/openmediavault-oar.git
+cd openmediavault-oar
 fakeroot debian/rules clean binary
 # result: ../openmediavault-oar_<version>_all.deb
 ```
@@ -138,7 +139,7 @@ omv-oar delete [--force] POOL
 - Unit tests (layout math, command plans, system introspection):
 
   ```sh
-  cd openmediavault/deb/openmediavault-oar
+  cd openmediavault-oar   # repo root
   PYTHONPATH=usr/lib/python3/dist-packages \
     python3 -m unittest discover -s usr/share/openmediavault/unittests/python -v
   ```
