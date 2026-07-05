@@ -502,11 +502,21 @@ def cmd_scrub(args: argparse.Namespace) -> int:
     for index, tier in sorted(tiers.items()):
         if tier.md is None:
             continue
-        steps.append(
-            Step(
-                (
-                    "sh",
-                    "-c",
+    elif fstype == "jfs":
+        if mountpoint:
+            executor.run_steps(
+                [Step(("mount", "-o", "remount,resize", mountpoint), "grow jfs")]
+            )
+        else:
+            tmpdir = tempfile.mkdtemp(prefix="oar-finalize-")
+            try:
+                executor.run_steps([
+                    Step(("mount", lv_dev_path, tmpdir), "mount for resize"),
+                    Step(("mount", "-o", "remount,resize", tmpdir), "grow jfs"),
+                    Step(("umount", tmpdir), "unmount"),
+                ])
+            finally:
+                shutil.rmtree(tmpdir, ignore_errors=True)
                     "echo check > /sys/block/%s/md/sync_action"
                     % tier.md.kname,
                 ),
