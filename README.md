@@ -5,7 +5,7 @@ Expandable, mixed-drive-size storage pools with single-parity redundancy for
 
 ```
 disks → GPT slices per size tier → mdadm RAID5 per tier (PPL write-hole
-protection) → LVM volume group → single logical volume → Btrfs, EXT4, XFS, F2FS or JFS
+protection) → LVM volume group → single logical volume → BTRFS, EXT4, XFS, F2FS or JFS
 ```
 
 Every component is standard, mature Linux storage infrastructure (mdadm, LVM2,
@@ -20,8 +20,8 @@ already-running OMV 8.x installation at any time. No reinstall, no reboot.
 ### Install
 
 ```sh
-wget https://github.com/carbrf/openmediavault-oar/releases/latest/download/openmediavault-oar_8.0.0-2_all.deb
-sudo apt-get install ./openmediavault-oar_8.0.0-2_all.deb
+wget https://github.com/carbrf/openmediavault-oar/releases/download/v8.1.0~beta1-1/openmediavault-oar_8.1.0~beta1-1_all.deb
+sudo apt-get install ./openmediavault-oar_8.1.0~beta1-1_all.deb
 ```
 
 That's it. The package's install hooks automatically restart `omv-engined`
@@ -38,7 +38,7 @@ exactly this purpose, no extra repository hosting needed:
 ```sh
 # on the OMV host, as root
 sudo wget -P /var/cache/openmediavault/archives \
-  https://github.com/carbrf/openmediavault-oar/releases/latest/download/openmediavault-oar_8.0.0-2_all.deb
+  https://github.com/carbrf/openmediavault-oar/releases/download/v8.1.0~beta1-1/openmediavault-oar_8.1.0~beta1-1_all.deb
 cd /var/cache/openmediavault/archives && sudo apt-ftparchive packages . > Packages && sudo apt-ftparchive release . > Release
 ```
 

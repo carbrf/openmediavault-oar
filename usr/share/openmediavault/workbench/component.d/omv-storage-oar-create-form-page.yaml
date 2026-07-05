@@ -33,7 +33,7 @@ data:
         store:
           data:
             - - btrfs
-              - _("Btrfs")
+              - _("BTRFS")
             - - ext4
               - _("EXT4")
             - - xfs
