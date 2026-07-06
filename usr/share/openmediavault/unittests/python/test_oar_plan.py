@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of OpenMediaVault.
+# This file is part of the openmediavault-oar plugin.
 #
 # @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
-# @author    OpenMediaVault Plugin Developers <plugins@openmediavault.org>
-# @copyright Copyright (c) 2026 OpenMediaVault Plugin Developers
+# @author    carbrf <carbrf@gmail.com>
+# @copyright Copyright (c) 2026 carbrf
 #
-# OpenMediaVault is free software: you can redistribute it and/or modify
+# This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # any later version.
 #
-# OpenMediaVault is distributed in the hope that it will be useful,
+# This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with OpenMediaVault. If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 """Plan coverage: golden argv sequences for a canonical create and
 grow, the grow scenarios from the contract (join / new tier /
 unallocatable) and replace planning."""
@@ -497,6 +497,23 @@ class ReplaceTestCase(unittest.TestCase):
             argvs(plan),
         )
         self.assertNotIn("/dev/sdb", [d.name for d in plan.layout.disks])
+
+    def test_finalize_handoff_always_last_even_without_new_tier(self):
+        # Same-size replacement forms no new tier, yet the finalize
+        # handoff must still be the final two steps of the plan.
+        plan = plan_replace(
+            "tank", self.layout, "/dev/sdb", Disk("/dev/sde", 10 * GiB)
+        )
+        self.assertFalse([s for s in plan.steps if s.argv[0] == "vgextend"])
+        steps = argvs(plan)
+        self.assertEqual(
+            steps[-2:],
+            [
+                ["vgchange", "--addtag", "oar.finalize", "tank"],
+                ["systemctl", "start",
+                 "omv-oar-finalize@tank.service", "--no-block"],
+            ],
+        )
 
     def test_dead_disk_uses_plain_add(self):
         plan = plan_replace(

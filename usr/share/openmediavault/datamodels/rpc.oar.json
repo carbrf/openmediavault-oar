@@ -44,7 +44,6 @@
 					"btrfs",
 					"ext4",
 					"xfs",
-					"f2fs",
 					"jfs"
 				],
 				"required": true

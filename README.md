@@ -5,7 +5,7 @@ Expandable, mixed-drive-size storage pools with single-parity redundancy for
 
 ```
 disks → GPT slices per size tier → mdadm RAID5 per tier (PPL write-hole
-protection) → LVM volume group → single logical volume → BTRFS, EXT4, XFS, F2FS or JFS
+protection) → LVM volume group → single logical volume → BTRFS, EXT4, XFS or JFS
 ```
 
 Every component is standard, mature Linux storage infrastructure (mdadm, LVM2,
@@ -65,7 +65,7 @@ fakeroot debian/rules clean binary
   core updates.
 - **OMV major release upgrades** (e.g. 8 → 9): grab the matching release (or
   rebuild against the new OMV version) and install it again. This is the same
-  rule that applies to every OMV plugin (`Depends: openmediavault (>= 8.5.0)`).
+  rule that applies to every OMV plugin (`Depends: openmediavault (>= 7.0.0)`).
 - **Your data does not depend on the plugin.** Pools are self-describing:
   GPT partition labels (`oar:<pool>:t<NN>`), mdadm superblocks and LVM
   metadata/tags live on the disks. Even with the plugin removed, Debian's
@@ -114,7 +114,7 @@ command plan without executing):
 ```
 omv-oar candidates --json          # unused disks
 omv-oar preview --json DEV...      # capacity calculator
-omv-oar create [--fs btrfs|ext4|xfs|f2fs|jfs] POOL DEV...
+omv-oar create [--fs btrfs|ext4|xfs|jfs] POOL DEV...
 omv-oar status --json [POOL]
 omv-oar detail POOL
 omv-oar grow POOL DEV...

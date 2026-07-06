@@ -1,4 +1,4 @@
-# This file is part of OpenMediaVault.
+# This file is part of the openmediavault-oar plugin.
 [Unit]
 Description=Finalize OAR pool expansion (%i)
 After=local-fs.target

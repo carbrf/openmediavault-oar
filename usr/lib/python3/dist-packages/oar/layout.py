@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of OpenMediaVault.
+# This file is part of the openmediavault-oar plugin.
 #
 # @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
-# @author    OpenMediaVault Plugin Developers <plugins@openmediavault.org>
-# @copyright Copyright (c) 2026 OpenMediaVault Plugin Developers
+# @author    carbrf <carbrf@gmail.com>
+# @copyright Copyright (c) 2026 carbrf
 #
-# OpenMediaVault is free software: you can redistribute it and/or modify
+# This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # any later version.
 #
-# OpenMediaVault is distributed in the hope that it will be useful,
+# This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with OpenMediaVault. If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 Pure tier layout planning for OAR pools. NO I/O in this module.
 
@@ -396,7 +396,7 @@ def plan_create(pool: str, disks: Sequence[Disk], fs: str = "btrfs") -> Plan:
     """Full pipeline: wipe, partition, mdadm --create per tier, pvcreate,
     vgcreate, lvcreate, mkfs."""
     validate_pool_name(pool)
-    if fs not in ("btrfs", "ext4", "xfs", "f2fs", "jfs"):
+    if fs not in ("btrfs", "ext4", "xfs", "jfs"):
         raise LayoutError("unsupported filesystem: %s" % fs)
     if len(disks) < 2:
         raise LayoutError("at least two disks are required")
@@ -445,7 +445,6 @@ def plan_create(pool: str, disks: Sequence[Disk], fs: str = "btrfs") -> Plan:
         "btrfs": ("mkfs.btrfs", "-L", pool, "-d", "single", "-m", "dup", lv_dev),
         "ext4": ("mkfs.ext4", "-L", pool, lv_dev),
         "xfs": ("mkfs.xfs", "-f", "-L", pool, lv_dev),
-        "f2fs": ("mkfs.f2fs", "-l", pool, lv_dev),
         "jfs": ("mkfs.jfs", "-q", "-L", pool, lv_dev),
     }[fs]
     steps.append(Step(mkfs_cmd, "create %s filesystem" % fs))
@@ -740,24 +739,25 @@ def plan_replace(
         steps.append(
             Step(("vgextend", pool) + tuple(new_pvs), "extend VG %s" % pool)
         )
-        steps.append(
-            Step(
-                ("vgchange", "--addtag", "oar.finalize", pool),
-                "mark pool pending finalize",
-            )
+    steps.append(
+        Step(
+            ("vgchange", "--addtag", "oar.finalize", pool),
+            "mark pool pending finalize (reap the replaced disk, restore "
+            "redundancy and grow if the new disk is larger)",
         )
-        steps.append(
-            Step(
-                (
-                    "systemctl",
-                    "start",
-                    "omv-oar-finalize@%s.service" % pool,
-                    "--no-block",
-                ),
-                "kick off background finalize",
-                check=False,
-            )
+    )
+    steps.append(
+        Step(
+            (
+                "systemctl",
+                "start",
+                "omv-oar-finalize@%s.service" % pool,
+                "--no-block",
+            ),
+            "kick off background finalize",
+            check=False,
         )
+    )
     return Plan(steps=tuple(steps), layout=result)
 
 

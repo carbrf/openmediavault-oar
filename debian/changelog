@@ -1,3 +1,45 @@
+openmediavault-oar (8.1.0~beta4-1) stable; urgency=low
+
+  * Package the Python modules with dh-python: bytecode is compiled on the
+    target at install time and no stale __pycache__ is shipped.
+  * Report each pool's mount point in the status and block deletion from
+    the UI while the filesystem is mounted, not only while it is referenced
+    by an fstab entry.
+  * Housekeeping: tidy the notifyPool config-object assignment, correct the
+    activity-summary docstring, bump Standards-Version to 4.6.2 and align
+    the documented openmediavault dependency with debian/control.
+
+ -- carbrf <carbrf@gmail.com>  Mon, 06 Jul 2026 15:00:00 -0400
+
+openmediavault-oar (8.1.0~beta3-1) stable; urgency=low
+
+  * Never leave a RAID5 tier without write-hole protection. During grow
+    finalization the write-intent bitmap is dropped before PPL is
+    restored; if re-enabling PPL fails, an internal bitmap is now re-added
+    as a fallback instead of leaving the array unprotected.
+  * Serialize pool finalization. The boot-time finalize unit, the per-pool
+    finalize unit and the manual RPC can all target one pool; a per-pool
+    lock now ensures only one runs the pvresize/lvextend/fs-grow/reap
+    sequence at a time.
+  * Ship the systemd units from /usr/lib/systemd/system and manage them
+    with dh_installsystemd, so a daemon-reload runs on install/upgrade and
+    the on-demand finalize unit is always visible without a reboot.
+
+ -- carbrf <carbrf@gmail.com>  Mon, 06 Jul 2026 14:00:00 -0400
+
+openmediavault-oar (8.1.0~beta2-1) stable; urgency=low
+
+  * Drop F2FS support. f2fs cannot be grown online, so the finalize step
+    failed on the (mounted) pool a grow leaves behind and wedged the pool
+    in the pending-finalize state. Supported file systems are now BTRFS,
+    EXT4, XFS and JFS.
+  * Replace/repair now reaps the retired disk. After a hot-replace or a
+    repair, background finalization removes the old disk's stale array
+    members, zeroes their superblocks and clears the OAR partition labels,
+    so pool discovery no longer double-counts the replaced disk.
+
+ -- carbrf <carbrf@gmail.com>  Mon, 06 Jul 2026 13:00:00 -0400
+
 openmediavault-oar (8.1.0~beta1-1) stable; urgency=low
 
   * Beta release — pre-release for testing; correctly lists all filesystem
@@ -17,4 +59,4 @@ openmediavault-oar (8.0.0-1) stable; urgency=low
 
   * Initial release.
 
- -- OpenMediaVault Plugin Developers <plugins@openmediavault.org>  Sat, 04 Jul 2026 12:00:00 +0200
+ -- carbrf <carbrf@gmail.com>  Sat, 04 Jul 2026 12:00:00 +0200

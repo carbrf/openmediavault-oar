@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Contact: OpenMediaVault Plugin Developers <plugins@openmediavault.org>
-Source: https://www.openmediavault.org
+Upstream-Contact: carbrf <carbrf@gmail.com>
+Source: https://github.com/carbrf/openmediavault-oar
 
 Files: *
-Copyright: 2026 OpenMediaVault Plugin Developers <plugins@openmediavault.org>
+Copyright: 2026 carbrf <carbrf@gmail.com>
 License: GPL-3+

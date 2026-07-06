@@ -1,23 +1,23 @@
 #!/usr/bin/env dash
 #
-# This file is part of OpenMediaVault.
+# This file is part of the openmediavault-oar plugin.
 #
 # @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
-# @author    OpenMediaVault Plugin Developers <plugins@openmediavault.org>
-# @copyright Copyright (c) 2026 OpenMediaVault Plugin Developers
+# @author    carbrf <carbrf@gmail.com>
+# @copyright Copyright (c) 2026 carbrf
 #
-# OpenMediaVault is free software: you can redistribute it and/or modify
+# This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # any later version.
 #
-# OpenMediaVault is distributed in the hope that it will be useful,
+# This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with OpenMediaVault. If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 set -e
 
@@ -29,10 +29,6 @@ remove_action() {
 case "$1" in
 	purge)
 		remove_action
-		# Remove the systemd unit state of the finalize units.
-		if [ -x /usr/bin/deb-systemd-helper ]; then
-			deb-systemd-helper purge omv-oar-finalize.service >/dev/null || :
-		fi
 	;;
 
 	remove)
@@ -47,5 +43,9 @@ case "$1" in
 		exit 1
 	;;
 esac
+
+# The finalize units' systemd state (disable on remove, purge on purge,
+# daemon-reload) is handled by the dh_installsystemd snippet here.
+#DEBHELPER#
 
 exit 0

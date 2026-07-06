@@ -2,14 +2,14 @@ Source: openmediavault-oar
 Section: admin
 XB-Plugin-Section: filesystems
 Priority: optional
-Maintainer: OpenMediaVault Plugin Developers <plugins@openmediavault.org>
-Build-Depends: debhelper (>= 12), gettext
-Standards-Version: 3.9.6
-Homepage: https://www.openmediavault.org
+Maintainer: carbrf <carbrf@gmail.com>
+Build-Depends: debhelper (>= 12), dh-python, gettext
+Standards-Version: 4.6.2
+Homepage: https://github.com/carbrf/openmediavault-oar
 
 Package: openmediavault-oar
 Architecture: all
-Depends: openmediavault (>= 7.0.0), openmediavault-md, lvm2, mdadm, gdisk, btrfs-progs, e2fsprogs, xfsprogs, f2fs-tools, jfsutils, util-linux, python3 (>= 3.11)
+Depends: ${misc:Depends}, ${python3:Depends}, openmediavault (>= 7.0.0), openmediavault-md, lvm2, mdadm, gdisk, btrfs-progs, e2fsprogs, xfsprogs, jfsutils, util-linux, python3 (>= 3.11)
 Priority: optional
 Description: openmediavault Open Adaptive RAID (OAR) plugin
  This plugin is used to create, manage, and monitor Open Adaptive RAID storage
@@ -17,5 +17,5 @@ Description: openmediavault Open Adaptive RAID (OAR) plugin
  volume that tolerates the failure of one disk. Each disk is sliced into
  size tiers, every tier is protected by an mdadm RAID5 array with PPL
  write-hole protection, and the arrays are aggregated into an LVM volume
- group carrying a single logical volume formatted with BTRFS, EXT4, XFS, F2FS or JFS.
+ group carrying a single logical volume formatted with BTRFS, EXT4, XFS or JFS.
  Pools can be grown online by adding disks of arbitrary sizes.

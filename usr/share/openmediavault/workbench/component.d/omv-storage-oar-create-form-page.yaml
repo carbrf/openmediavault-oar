@@ -38,8 +38,6 @@ data:
               - _("EXT4")
             - - xfs
               - _("XFS")
-            - - f2fs
-              - _("F2FS")
             - - jfs
               - _("JFS")
       - type: select

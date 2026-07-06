@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of OpenMediaVault.
+# This file is part of the openmediavault-oar plugin.
 #
 # @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
-# @author    OpenMediaVault Plugin Developers <plugins@openmediavault.org>
-# @copyright Copyright (c) 2026 OpenMediaVault Plugin Developers
+# @author    carbrf <carbrf@gmail.com>
+# @copyright Copyright (c) 2026 carbrf
 #
-# OpenMediaVault is free software: you can redistribute it and/or modify
+# This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # any later version.
 #
-# OpenMediaVault is distributed in the hope that it will be useful,
+# This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with OpenMediaVault. If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 """System introspection coverage: the lsblk/mdstat/LVM parser contracts,
 pool discovery via partlabels and VG tags, status/state derivation and
 candidate disk selection — all over a synthetic 3-disk 'tank' pool
@@ -39,6 +39,7 @@ from oar.sysinfo import (
     pool_names,
     pool_status,
     pool_tiers,
+    stale_slices,
     vg_tags,
 )
 
@@ -107,6 +108,45 @@ md126 : active raid5 sdc1[1] sdb1[0]
 
 md127 : active raid5 sdc2[0]
       10289152 blocks super 1.2 level 5, 512k chunk, algorithm 2 [2/1] [U_]
+
+unused devices: <none>
+"""
+
+#: t00 array full again after a hot-replace: the replacement sde1 is
+#: active and the old sdb1 lingers as a faulty extra member (slots==up).
+STALE_MDSTAT_HOT_FAULTY = """\
+Personalities : [raid6] [raid5] [raid4]
+md126 : active raid5 sde1[3] sdd1[2] sdc1[1] sdb1[0](F)
+      20578304 blocks super 1.2 level 5, 512k chunk, algorithm 2 [3/3] [UUU]
+
+md127 : active raid5 sdd2[1] sdc2[0]
+      10289152 blocks super 1.2 level 5, 512k chunk, algorithm 2 [2/2] [UU]
+
+unused devices: <none>
+"""
+
+#: t00 array full again, but the old sdb1 has been evicted entirely --
+#: it is no longer a member at all (orphaned slice).
+STALE_MDSTAT_HOT_ORPHAN = """\
+Personalities : [raid6] [raid5] [raid4]
+md126 : active raid5 sde1[3] sdd1[2] sdc1[1]
+      20578304 blocks super 1.2 level 5, 512k chunk, algorithm 2 [3/3] [UUU]
+
+md127 : active raid5 sdd2[1] sdc2[0]
+      10289152 blocks super 1.2 level 5, 512k chunk, algorithm 2 [2/2] [UU]
+
+unused devices: <none>
+"""
+
+#: sdc (a two-tier disk) replaced by sde: both arrays are full again,
+#: with sdc1 lingering faulty in t00 and sdc2 evicted from t01.
+STALE_MDSTAT_TWO_TIER = """\
+Personalities : [raid6] [raid5] [raid4]
+md126 : active raid5 sde1[3] sdd1[2] sdc1[1](F) sdb1[0]
+      20578304 blocks super 1.2 level 5, 512k chunk, algorithm 2 [3/3] [UUU]
+
+md127 : active raid5 sde2[2] sdd2[1]
+      10289152 blocks super 1.2 level 5, 512k chunk, algorithm 2 [2/2] [UU]
 
 unused devices: <none>
 """
@@ -310,6 +350,37 @@ def _set_md(state, kname, **over):
 
 def _drop_devices(state, *knames):
     state.devices = [d for d in state.devices if d.kname not in knames]
+
+
+def _stale_state(mdstat_text, replacement_tiers=()):
+    """Fresh tank lsblk tree plus a replacement disk 'sde' carrying a
+    labeled slice (partlabel oar:tank:t<NN>, assembled into the tier md)
+    for every index in ``replacement_tiers``, paired with the given
+    /proc/mdstat text. stale_slices only reads devices + mdstat."""
+    md_for = {0: ("md126", T0_HEIGHT), 1: ("md127", T1_HEIGHT)}
+    data = _tank_lsblk()
+    slices = []
+    for tier in replacement_tiers:
+        md_name, height = md_for[tier]
+        pname = "sde%d" % (tier + 1)
+        slices.append(
+            _lsblk_node(
+                pname, height, "part", pkname="sde",
+                partlabel="oar:tank:t%02d" % tier, parttype=PART_GUID,
+                fstype="linux_raid_member",
+                children=[_lsblk_node(md_name, height, "raid5", pkname=pname)],
+            )
+        )
+    data["blockdevices"].append(
+        _lsblk_node(
+            "sde", 20 * GiB, "disk", model="WDC WD201EFRX",
+            serial="WD-4", vendor="ATA     ", rota=True, tran="sata",
+            children=slices,
+        )
+    )
+    return SystemState(
+        devices=parse_lsblk(data), mdstat=parse_mdstat(mdstat_text)
+    )
 
 
 # -----------------------------------------------------------------------
@@ -594,8 +665,8 @@ class PoolStatusShapeTestCase(unittest.TestCase):
             sorted(status),
             [
                 "activity", "allocated", "devicefile", "disks", "free",
-                "fstype", "name", "pending_finalize", "size", "state",
-                "tiers", "unallocatable",
+                "fstype", "mountpoint", "name", "pending_finalize", "size",
+                "state", "tiers", "unallocatable",
             ],
         )
         self.assertEqual(status["name"], "tank")
@@ -603,6 +674,9 @@ class PoolStatusShapeTestCase(unittest.TestCase):
         # LV as name 'tank-data' with path /dev/dm-0.
         self.assertEqual(status["devicefile"], "/dev/mapper/tank-data")
         self.assertEqual(status["fstype"], "btrfs")
+        self.assertEqual(
+            status["mountpoint"], "/srv/dev-disk-by-uuid-0a1b2c3d"
+        )
         self.assertEqual(status["state"], "online")
         self.assertEqual(status["activity"], "")
         self.assertFalse(status["pending_finalize"])
@@ -648,6 +722,7 @@ class PoolStatusShapeTestCase(unittest.TestCase):
             if dev.kname == "dm-0":
                 dev.mountpoint = ""
         status = pool_status(state, "tank")
+        self.assertEqual(status["mountpoint"], "")
         self.assertEqual(status["size"], VG_SIZE)
         self.assertEqual(status["free"], VG_FREE)
         self.assertEqual(status["allocated"], LV_SIZE)
@@ -818,6 +893,51 @@ class PoolStatusDisksTestCase(unittest.TestCase):
         ])
         self.assertEqual(status["state"], "degraded")
 
+
+# -----------------------------------------------------------------------
+# stale_slices: reaping the disk left behind by a hot-replace.
+# -----------------------------------------------------------------------
+
+class StaleSlicesTestCase(unittest.TestCase):
+    """Contract: a labeled slice is reaped only once its tier array is
+    fully redundant again (slots==up) AND the slice is either faulty or
+    no longer a member. A still-degraded tier reaps nothing."""
+
+    def test_faulty_old_member_reaped_when_array_full(self):
+        # sde replaced sdb; md126 is [3/3] again with sdb1 lingering
+        # faulty. Only sdb1 is stale; the live members are left alone.
+        state = _stale_state(STALE_MDSTAT_HOT_FAULTY, replacement_tiers=[0])
+        stale = stale_slices(state, "tank")
+        self.assertEqual([p.path for p in stale], ["/dev/sdb1"])
+        self.assertTrue(stale[0].partlabel.startswith("oar:tank:"))
+
+    def test_orphaned_slice_reaped_when_array_full(self):
+        # sdb1 carries the label but is not a member of md126 at all.
+        state = _stale_state(STALE_MDSTAT_HOT_ORPHAN, replacement_tiers=[0])
+        self.assertEqual(
+            [p.path for p in stale_slices(state, "tank")], ["/dev/sdb1"]
+        )
+
+    def test_degraded_tier_reaps_nothing_despite_faulty_member(self):
+        # md126 is [3/2]: sdc1 is faulty but the array is NOT redundant
+        # again, so the failed-but-unreplaced slice must be left in place.
+        state = tank_state()
+        state.mdstat = parse_mdstat(TANK_MDSTAT_FAULTY)
+        self.assertEqual(stale_slices(state, "tank"), [])
+
+    def test_healthy_pool_reaps_nothing(self):
+        # Every member present, none faulty, both arrays full.
+        self.assertEqual(stale_slices(tank_state(), "tank"), [])
+
+    def test_two_tier_disk_reaped_from_both_tiers(self):
+        # sdc fed both t00 and t01; after replacement by sde both arrays
+        # are full again, so both of sdc's labeled slices are reaped
+        # (sdc1 faulty in t00, sdc2 orphaned from t01).
+        state = _stale_state(STALE_MDSTAT_TWO_TIER, replacement_tiers=[0, 1])
+        stale = stale_slices(state, "tank")
+        self.assertEqual(
+            sorted(p.path for p in stale), ["/dev/sdc1", "/dev/sdc2"]
+        )
 
 # -----------------------------------------------------------------------
 # Candidate disks.

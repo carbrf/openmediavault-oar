@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of OpenMediaVault.
+# This file is part of the openmediavault-oar plugin.
 #
 # @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
-# @author    OpenMediaVault Plugin Developers <plugins@openmediavault.org>
-# @copyright Copyright (c) 2026 OpenMediaVault Plugin Developers
+# @author    carbrf <carbrf@gmail.com>
+# @copyright Copyright (c) 2026 carbrf
 #
-# OpenMediaVault is free software: you can redistribute it and/or modify
+# This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # any later version.
 #
-# OpenMediaVault is distributed in the hope that it will be useful,
+# This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with OpenMediaVault. If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 System introspection for OAR pools.
 
@@ -425,6 +425,34 @@ def pool_layout(state: SystemState, pool: str) -> layout.Layout:
     )
 
 
+def stale_slices(state: SystemState, pool: str) -> List[BlockDevice]:
+    """Partitions still carrying this pool's ``oar:<pool>:tNN`` label
+    that are no longer a healthy member of their tier array -- e.g. the
+    disk left behind by a hot-replace or a repaired-away faulty disk.
+
+    A slice is reported only when its tier array is fully redundant
+    again (every raid-device slot up) and the slice is either a faulty
+    member or not a member at all. Tiers that are still degraded are
+    skipped, so a genuinely failed disk that has not been replaced yet
+    is never reaped."""
+    out: List[BlockDevice] = []
+    for tier in pool_tiers(state, pool).values():
+        md = tier.md
+        if md is None:
+            continue
+        entry = state.mdstat.get(md.kname, {})
+        slots = entry.get("slots")
+        up = entry.get("up")
+        if slots is None or up is None or up < slots:
+            continue
+        members = entry.get("members", {})
+        for part in tier.partitions:
+            info = members.get(part.kname)
+            if info is None or info.get("faulty"):
+                out.append(part)
+    return out
+
+
 def _tier_json(state: SystemState, pool: str, tier: TierState) -> dict:
     md = tier.md
     attrs = state.md_attrs.get(md.kname, {}) if md else {}
@@ -476,8 +504,9 @@ def _pool_state(
 
 
 def _pool_activity(tiers: List[dict]) -> str:
-    """Human-readable summary of the busiest running sync operation,
-    e.g. 'reshape (42%)'. Empty string when every tier is idle."""
+    """Human-readable summary of the running sync operation that is
+    furthest from finishing (the least-complete one), e.g. 'reshape
+    (42%)'. Empty string when every tier is idle."""
     active = [
         (t["sync_action"], t["progress"])
         for t in tiers
@@ -575,6 +604,7 @@ def pool_status(state: SystemState, pool: str) -> dict:
         "name": pool,
         "devicefile": devicefile,
         "fstype": fstype,
+        "mountpoint": mountpoint,
         "state": _pool_state(tiers, pending, lv_row is None),
         "size": size,
         "allocated": allocated,

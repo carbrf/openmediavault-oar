@@ -80,7 +80,7 @@ data:
         sortable: true
         hidden: true
         cellTemplateName: checkIcon
-      - name: _("Referenced")
+      - name: _("In use")
         prop: _used
         flexGrow: 1
         sortable: true

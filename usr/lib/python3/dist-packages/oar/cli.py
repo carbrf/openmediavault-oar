@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of OpenMediaVault.
+# This file is part of the openmediavault-oar plugin.
 #
 # @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
-# @author    OpenMediaVault Plugin Developers <plugins@openmediavault.org>
-# @copyright Copyright (c) 2026 OpenMediaVault Plugin Developers
+# @author    carbrf <carbrf@gmail.com>
+# @copyright Copyright (c) 2026 carbrf
 #
-# OpenMediaVault is free software: you can redistribute it and/or modify
+# This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # any later version.
 #
-# OpenMediaVault is distributed in the hope that it will be useful,
+# This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with OpenMediaVault. If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 omv-oar command line interface.
 
@@ -28,6 +28,7 @@ Exit codes: 0 ok; 1 operational failure (message on stderr);
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import shutil
@@ -362,6 +363,35 @@ def cmd_finalize(args: argparse.Namespace) -> int:
 
 
 def _finalize_pool(state: sysinfo.SystemState, pool: str) -> None:
+    """Serialize finalization per pool. The boot-time ``finalize --all``
+    unit, the per-pool ``omv-oar-finalize@`` unit and the manual RPC can
+    all fire for the same pool; a non-blocking exclusive lock keeps only
+    one running the reap/pvresize/lvextend/fs-grow sequence at a time. A
+    caller that cannot take the lock skips -- the holder does the work."""
+    lock_path = "/run/lock/omv-oar-finalize.%s.lock" % pool
+    try:
+        os.makedirs("/run/lock", exist_ok=True)
+        lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    except OSError:
+        # No lock available (e.g. /run not mounted): run unlocked rather
+        # than skip finalization entirely.
+        _finalize_pool_locked(state, pool)
+        return
+    try:
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            sys.stdout.write(
+                "%s: finalize already running for pool %s; skipping\n"
+                % (PROG, pool)
+            )
+            return
+        _finalize_pool_locked(state, pool)
+    finally:
+        os.close(lock_fd)
+
+
+def _finalize_pool_locked(state: sysinfo.SystemState, pool: str) -> None:
     """Idempotent completion of a grow: wait for reshapes, restore PPL,
     pvresize, lvextend, grow the filesystem, drop the oar.finalize tag."""
     vg_row = next(
@@ -395,13 +425,18 @@ def _finalize_pool(state: sysinfo.SystemState, pool: str) -> None:
                     check=False,
                 )
             )
-            # If PPL cannot be enabled the array keeps the bitmap
-            # (same fallback as create).
+            # PPL and a write-intent bitmap are mutually exclusive, so
+            # the bitmap is dropped first. If enabling PPL then fails,
+            # the fallback re-adds an internal bitmap so the array is
+            # never left without write-hole protection.
             steps.append(
                 Step(
                     ("mdadm", "--grow", md, "--consistency-policy=ppl"),
                     "restore PPL",
                     check=False,
+                    fallback_argv=(
+                        "mdadm", "--grow", md, "--bitmap=internal",
+                    ),
                 )
             )
     for row in state.pvs:
@@ -421,6 +456,67 @@ def _finalize_pool(state: sysinfo.SystemState, pool: str) -> None:
         )
     )
     executor.run_steps(steps)
+
+    # Reap the slices left behind by a replaced/repaired disk. The wait
+    # above finished any rebuild, so a disk that was hot-replaced or
+    # repaired away is now a faulty extra member (or gone from the
+    # array) while its GPT slices still carry the pool's partlabel --
+    # discovery would keep counting it. Re-read state: array membership
+    # changed during the wait.
+    fresh = sysinfo.collect()
+    stale = sysinfo.stale_slices(fresh, pool)
+    if stale:
+        tiers_now = sysinfo.pool_tiers(fresh, pool)
+        md_by_index = {i: t.md for i, t in tiers_now.items()}
+        labeled_by_disk: Dict[str, List[sysinfo.BlockDevice]] = {}
+        for t in tiers_now.values():
+            for p in t.partitions:
+                labeled_by_disk.setdefault(p.pkname, []).append(p)
+        stale_by_disk: Dict[str, List[sysinfo.BlockDevice]] = {}
+        for p in stale:
+            stale_by_disk.setdefault(p.pkname, []).append(p)
+        reap: List[Step] = []
+        for p in stale:
+            m = sysinfo.PARTLABEL_RE.match(p.partlabel)
+            md = md_by_index.get(int(m.group(2))) if m else None
+            if md is not None:
+                md_path = md.path or "/dev/%s" % md.kname
+                reap.append(
+                    Step(
+                        ("mdadm", md_path, "--remove", p.path),
+                        "remove retired slice %s from %s" % (p.path, md_path),
+                        check=False,
+                    )
+                )
+            reap.append(
+                Step(
+                    ("mdadm", "--zero-superblock", p.path),
+                    "zero superblock on %s" % p.path,
+                    check=False,
+                )
+            )
+        for pkname, retired in stale_by_disk.items():
+            disk = fresh.device_by_kname(pkname)
+            if disk is None:
+                continue
+            # Only wipe the whole disk (dropping its partlabels) when
+            # every oar slice on it is retired.
+            if len(retired) == len(labeled_by_disk.get(pkname, [])):
+                reap.append(
+                    Step(
+                        ("sgdisk", "--zap-all", disk.path),
+                        "wipe partition table on retired %s" % disk.path,
+                        check=False,
+                    )
+                )
+                reap.append(
+                    Step(
+                        ("wipefs", "-a", disk.path),
+                        "wipe signatures on retired %s" % disk.path,
+                        check=False,
+                    )
+                )
+        executor.run_steps(reap)
 
     # Grow the filesystem. Re-read state: the LV may just have grown.
     dm = sysinfo.dm_name(pool, "data")
@@ -474,10 +570,6 @@ def _finalize_pool(state: sysinfo.SystemState, pool: str) -> None:
                 ])
             finally:
                 shutil.rmtree(tmpdir, ignore_errors=True)
-    elif fstype == "f2fs":
-        executor.run_steps(
-            [Step(("resize.f2fs", lv_dev_path), "grow f2fs")]
-        )
     elif fstype == "jfs":
         if mountpoint:
             executor.run_steps(
@@ -612,7 +704,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=PROG,
         description="Manage Open Adaptive RAID (OAR) storage pools "
-        "(GPT slices -> mdadm RAID5 tiers -> LVM -> btrfs/ext4/xfs/f2fs/jfs).",
+        "(GPT slices -> mdadm RAID5 tiers -> LVM -> btrfs/ext4/xfs/jfs).",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -630,7 +722,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("create", help="create a pool")
     p.add_argument("--json", action="store_true")
-    p.add_argument("--fs", choices=("btrfs", "ext4", "xfs", "f2fs", "jfs"), default="btrfs")
+    p.add_argument("--fs", choices=("btrfs", "ext4", "xfs", "jfs"), default="btrfs")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("pool", metavar="POOL")
     p.add_argument("devices", nargs="+", metavar="DEV")

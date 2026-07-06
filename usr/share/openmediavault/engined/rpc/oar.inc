@@ -1,24 +1,24 @@
 <?php
 
 /**
- * This file is part of OpenMediaVault.
+ * This file is part of the openmediavault-oar plugin.
  *
  * @license   https://www.gnu.org/licenses/gpl.html GPL Version 3
- * @author    OpenMediaVault Plugin Developers <plugins@openmediavault.org>
- * @copyright Copyright (c) 2026 OpenMediaVault Plugin Developers
+ * @author    carbrf <carbrf@gmail.com>
+ * @copyright Copyright (c) 2026 carbrf
  *
- * OpenMediaVault is free software: you can redistribute it and/or modify
+ * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * any later version.
  *
- * OpenMediaVault is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with OpenMediaVault. If not, see <https://www.gnu.org/licenses/>.
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 namespace Engined\Rpc;
@@ -142,9 +142,10 @@ class Oar extends \OMV\Rpc\ServiceAbstract
             "name" => $pool['name'],
             "devicefile" => $pool['devicefile'],
             "fs" => $pool['fstype'],
-//			"devices" => $devices
         ]);
-        $object->set("devices", $devices); // Workaround
+        // The 'devices' list is populated separately; setAssoc() does
+        // not fill array-typed properties from a nested value.
+        $object->set("devices", $devices);
         $dispatcher->notify(
             $type,
             $object->getModel()->getNotificationId(),
@@ -161,9 +162,8 @@ class Oar extends \OMV\Rpc\ServiceAbstract
                 "devicefile" => $tier['devicefile'],
                 "level" => $tier['level'],
                 "numdevices" => count($tier['members']),
-//				"devices" => $tier['members']
             ]);
-            $object->set("devices", $tier['members']); // Workaround
+            $object->set("devices", $tier['members']);
             $dispatcher->notify(
                 $type,
                 $object->getModel()->getNotificationId(),
@@ -194,8 +194,8 @@ class Oar extends \OMV\Rpc\ServiceAbstract
         // Prepare the result object.
         $result = [];
         foreach ($pools as $pool) {
-            // Check if the pool is in use, e.g. does the file system
-            // on it have a mount point configuration?
+            // Check if the pool is in use: referenced by an fstab mount
+            // point entry, or currently mounted.
             $used = FALSE;
             if (FALSE !== \OMV\Rpc\Rpc::call(
                 "FsTab",
@@ -203,6 +203,11 @@ class Oar extends \OMV\Rpc\ServiceAbstract
                 [ "fsname" => $pool['devicefile'] ],
                 $context
             )) {
+                $used = TRUE;
+            }
+            // A mounted filesystem (even one not referenced by fstab)
+            // counts as in use, so deletion stays blocked in the UI.
+            if (!empty($pool['mountpoint'])) {
                 $used = TRUE;
             }
             $pool['_used'] = $used;
@@ -320,7 +325,7 @@ class Oar extends \OMV\Rpc\ServiceAbstract
      * @param params The method parameters.
      *   \em name The name of the pool.
      *   \em devices The devices to be used.
-     *   \em fs The file system to create, e.g. btrfs, ext4, xfs, f2fs, or jfs.
+     *   \em fs The file system to create, e.g. btrfs, ext4, xfs, or jfs.
      * @param context The context of the caller.
      * @return The name of the background process status file.
      * @throw \OMV\Exception
