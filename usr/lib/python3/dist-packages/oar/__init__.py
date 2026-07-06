@@ -24,4 +24,4 @@ oar - Open Adaptive RAID expandable mixed-size single-parity storage pools.
 Stack: GPT partition slices -> mdadm RAID5 per tier (PPL write-hole
 protection) -> LVM VG/LV -> btrfs (default), ext4, xfs, or jfs.
 """
-__version__ = "8.1.0~beta4"
+__version__ = "8.1.0~beta5"

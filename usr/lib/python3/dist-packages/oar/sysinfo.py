@@ -42,8 +42,10 @@ LSBLK_COLUMNS = (
     "VENDOR,ROTA,RO,TRAN,MOUNTPOINT,FSTYPE"
 )
 
-#: partlabel "oar:<pool>:t<NN>"
-PARTLABEL_RE = re.compile(r"^oar:([a-zA-Z][a-zA-Z0-9+_.-]{0,31}):t(\d+)$")
+#: partlabel "oar@<pool>@t<NN>" (NOT colon-separated -- see
+#: layout.partlabel() for why: sgdisk --change-name splits on every
+#: colon in its argument, silently truncating a colon-separated label).
+PARTLABEL_RE = re.compile(r"^oar@([a-zA-Z][a-zA-Z0-9+_.-]{0,31})@t(\d+)$")
 
 POOL_TAG = "omv-oar"
 FINALIZE_TAG = "oar.finalize"
@@ -377,7 +379,7 @@ def pool_names(state: SystemState) -> List[str]:
 
 
 def pool_tiers(state: SystemState, pool: str) -> Dict[int, TierState]:
-    """Tier discovery: partlabels 'oar:<pool>:t<NN>' + their md children."""
+    """Tier discovery: partlabels 'oar@<pool>@t<NN>' + their md children."""
     tiers: Dict[int, TierState] = {}
     for dev in state.devices:
         m = PARTLABEL_RE.match(dev.partlabel)
@@ -426,7 +428,7 @@ def pool_layout(state: SystemState, pool: str) -> layout.Layout:
 
 
 def stale_slices(state: SystemState, pool: str) -> List[BlockDevice]:
-    """Partitions still carrying this pool's ``oar:<pool>:tNN`` label
+    """Partitions still carrying this pool's ``oar@<pool>@tNN`` label
     that are no longer a healthy member of their tier array -- e.g. the
     disk left behind by a hot-replace or a repaired-away faulty disk.
 

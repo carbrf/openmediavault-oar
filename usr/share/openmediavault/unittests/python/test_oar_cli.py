@@ -42,14 +42,14 @@ MD_KNAME = "md127"
 
 def _tank_state(consistency_policy):
     """A minimal one-tier 'tank' snapshot carrying the oar.finalize tag:
-    disk sda -> partition sda1 (partlabel oar:tank:t00) -> md tank-t00.
+    disk sda -> partition sda1 (partlabel oar@tank@t00) -> md tank-t00.
     ``consistency_policy`` drives the != 'ppl' branch under test."""
     disk = BlockDevice(
         name="sda", kname="sda", path="/dev/sda", size=20 * GiB, type="disk"
     )
     part = BlockDevice(
         name="sda1", kname="sda1", path="/dev/sda1", size=20 * GiB - 1024 ** 2,
-        type="part", pkname="sda", partlabel="oar:tank:t00",
+        type="part", pkname="sda", partlabel="oar@tank@t00",
         fstype="linux_raid_member",
     )
     md = BlockDevice(

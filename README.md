@@ -67,7 +67,7 @@ fakeroot debian/rules clean binary
   rebuild against the new OMV version) and install it again. This is the same
   rule that applies to every OMV plugin (`Depends: openmediavault (>= 7.0.0)`).
 - **Your data does not depend on the plugin.** Pools are self-describing:
-  GPT partition labels (`oar:<pool>:t<NN>`), mdadm superblocks and LVM
+  GPT partition labels (`oar@<pool>@t<NN>`), mdadm superblocks and LVM
   metadata/tags live on the disks. Even with the plugin removed, Debian's
   standard udev/mdadm/LVM machinery assembles the arrays and activates the
   volume group at boot, and the filesystem stays mounted via the mount point

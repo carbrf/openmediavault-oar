@@ -200,7 +200,15 @@ def md_device(pool: str, index: int) -> str:
 
 
 def partlabel(pool: str, index: int) -> str:
-    return "oar:%s:t%02d" % (pool, index)
+    """GPT partition label. NOTE: uses ``@``, not ``:``, as the field
+    separator. ``sgdisk --change-name=<num>:<name>`` splits its
+    argument on EVERY colon, not just the first (partnum-separating)
+    one -- ``--change-name=1:oar:pool:t00`` silently truncates the
+    on-disk label to just ``oar``. Verified with GPT fdisk 1.0.9
+    (Debian 12/bookworm). ``@`` (and every other character tested)
+    survives sgdisk and round-trips correctly through blkid/lsblk,
+    including live relabeling of an in-use RAID member partition."""
+    return "oar@%s@t%02d" % (pool, index)
 
 
 def _tier_spans(heights: Dict[str, int]) -> List[Tuple[int, List[str]]]:

@@ -199,7 +199,14 @@ class LayoutStructureTestCase(unittest.TestCase):
     def test_names_and_labels(self):
         self.assertEqual(layout.tier_name("tank", 3), "tank-t03")
         self.assertEqual(layout.md_device("tank", 0), "/dev/md/tank-t00")
-        self.assertEqual(layout.partlabel("tank", 12), "oar:tank:t12")
+        self.assertEqual(layout.partlabel("tank", 12), "oar@tank@t12")
+
+    def test_partlabel_never_contains_colon(self):
+        # sgdisk's --change-name splits its argument on EVERY colon, so a
+        # colon-separated label is silently truncated by real sgdisk; the
+        # label must never contain one.
+        for pool, index in (("tank", 0), ("a" * 32, 99)):
+            self.assertNotIn(":", layout.partlabel(pool, index))
 
 
 class PreviewTestCase(unittest.TestCase):

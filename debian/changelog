@@ -1,3 +1,28 @@
+openmediavault-oar (8.1.0~beta5-1) stable; urgency=high
+
+  * Critical: fix pool/tier discovery on real disks. GPT partition labels
+    used ':' to separate the pool name and tier index
+    (e.g. "oar:tank:t00"), but "sgdisk --change-name" splits its argument
+    on EVERY colon, not just the one separating the partition number from
+    the name -- it was silently truncating every on-disk label to just
+    "oar". This meant partlabel-based disk/tier discovery never worked
+    against real hardware for any pool created by this plugin: `status`
+    and `detail` showed the pool as online but with empty disks/tiers
+    lists, and grow/replace/scrub could not see any pool members. Unit
+    tests never caught it because they exercise the Python layout model
+    directly, never real sgdisk. Verified against GPT fdisk 1.0.9
+    (Debian 12): every character other than ':' survives, including a
+    live relabel of an already-assembled, in-use RAID member partition
+    (no downtime, no resync, no data risk). The label format is now
+    "oar@<pool>@t<NN>". A pool created by beta1-beta4 needs its member
+    partitions relabeled once: for each member device and its tier index
+    (see the tier's mdadm --detail Name=host:<pool>-t<NN> to identify
+    both), run `sgdisk --change-name=<partnum>:oar@<pool>@t<NN> <disk>`
+    -- this is a metadata-only change, safe on a live, in-use array.
+    Newly created and grown pools are unaffected.
+
+ -- carbrf <carbrf@gmail.com>  Mon, 06 Jul 2026 16:00:00 -0400
+
 openmediavault-oar (8.1.0~beta4-1) stable; urgency=low
 
   * Package the Python modules with dh-python: bytecode is compiled on the

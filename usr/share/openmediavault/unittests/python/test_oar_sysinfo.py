@@ -163,7 +163,7 @@ LSBLK_TEXT = """\
        "fstype":null,
        "children": [
           {"name":"sdb1", "kname":"sdb1", "path":"/dev/sdb1",
-           "size":"10736369664", "type":"part", "partlabel":"oar:tank:t00",
+           "size":"10736369664", "type":"part", "partlabel":"oar@tank@t00",
            "parttype":"a19d880f-05fc-4d3b-a006-743f0f84911e",
            "model":null, "serial":null, "vendor":null, "rota":"1",
            "ro":"0", "tran":null, "mountpoint":null,
@@ -258,7 +258,7 @@ def _tank_lsblk():
         name = "%s%d" % (disk, number)
         return _lsblk_node(
             name, size, "part", pkname=disk,
-            partlabel="oar:tank:t%02d" % tier, parttype=PART_GUID,
+            partlabel="oar@tank@t%02d" % tier, parttype=PART_GUID,
             fstype="linux_raid_member", children=[md(name)],
         )
 
@@ -354,7 +354,7 @@ def _drop_devices(state, *knames):
 
 def _stale_state(mdstat_text, replacement_tiers=()):
     """Fresh tank lsblk tree plus a replacement disk 'sde' carrying a
-    labeled slice (partlabel oar:tank:t<NN>, assembled into the tier md)
+    labeled slice (partlabel oar@tank@t<NN>, assembled into the tier md)
     for every index in ``replacement_tiers``, paired with the given
     /proc/mdstat text. stale_slices only reads devices + mdstat."""
     md_for = {0: ("md126", T0_HEIGHT), 1: ("md127", T1_HEIGHT)}
@@ -366,7 +366,7 @@ def _stale_state(mdstat_text, replacement_tiers=()):
         slices.append(
             _lsblk_node(
                 pname, height, "part", pkname="sde",
-                partlabel="oar:tank:t%02d" % tier, parttype=PART_GUID,
+                partlabel="oar@tank@t%02d" % tier, parttype=PART_GUID,
                 fstype="linux_raid_member",
                 children=[_lsblk_node(md_name, height, "raid5", pkname=pname)],
             )
@@ -489,7 +489,7 @@ class ParseLsblkTestCase(unittest.TestCase):
         self.assertIs(devs["md126"].rota, False)  # JSON false
         self.assertEqual(devs["sdb"].vendor, "ATA")  # padding stripped
         self.assertEqual(devs["sdb"].partlabel, "")  # null -> ""
-        self.assertEqual(devs["sdb1"].partlabel, "oar:tank:t00")
+        self.assertEqual(devs["sdb1"].partlabel, "oar@tank@t00")
         self.assertEqual(devs["dm-0"].fstype, "btrfs")
 
     def test_md_repeated_under_two_parents_deduped(self):
@@ -500,12 +500,12 @@ class ParseLsblkTestCase(unittest.TestCase):
             "blockdevices": [
                 _lsblk_node("sdx", 2 * GiB, "disk", children=[
                     _lsblk_node("sdx1", GiB, "part", pkname="sdx",
-                                partlabel="oar:p:t00",
+                                partlabel="oar@p@t00",
                                 children=[md("sdx1")]),
                 ]),
                 _lsblk_node("sdy", 2 * GiB, "disk", children=[
                     _lsblk_node("sdy1", GiB, "part", pkname="sdy",
-                                partlabel="oar:p:t00",
+                                partlabel="oar@p@t00",
                                 children=[md("sdy1")]),
                 ]),
             ]
@@ -603,11 +603,11 @@ class PoolTiersTestCase(unittest.TestCase):
         data["blockdevices"] += [
             _lsblk_node("sde", 20 * GiB, "disk", children=[
                 _lsblk_node("sde1", T0_HEIGHT, "part", pkname="sde",
-                            partlabel="oar:other:t00", parttype=PART_GUID),
+                            partlabel="oar@other@t00", parttype=PART_GUID),
             ]),
             _lsblk_node("sdf", 20 * GiB, "disk", children=[
                 _lsblk_node("sdf1", T0_HEIGHT, "part", pkname="sdf",
-                            partlabel="oar:tank:tier0"),  # not t<NN>
+                            partlabel="oar@tank@tier0"),  # not t<NN>
             ]),
         ]
         state = SystemState(devices=parse_lsblk(data))
@@ -909,7 +909,7 @@ class StaleSlicesTestCase(unittest.TestCase):
         state = _stale_state(STALE_MDSTAT_HOT_FAULTY, replacement_tiers=[0])
         stale = stale_slices(state, "tank")
         self.assertEqual([p.path for p in stale], ["/dev/sdb1"])
-        self.assertTrue(stale[0].partlabel.startswith("oar:tank:"))
+        self.assertTrue(stale[0].partlabel.startswith("oar@tank@"))
 
     def test_orphaned_slice_reaped_when_array_full(self):
         # sdb1 carries the label but is not a member of md126 at all.
