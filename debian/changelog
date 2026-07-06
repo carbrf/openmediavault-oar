@@ -21,8 +21,8 @@ openmediavault-oar (8.1.0~beta3-1) stable; urgency=low
     finalize unit and the manual RPC can all target one pool; a per-pool
     lock now ensures only one runs the pvresize/lvextend/fs-grow/reap
     sequence at a time.
-  * Ship the systemd units from /usr/lib/systemd/system and manage them
-    with dh_installsystemd, so a daemon-reload runs on install/upgrade and
+  * Ship the systemd units from /usr/lib/systemd/system and enable them,
+    with a systemd daemon-reload, from the package maintainer scripts, so
     the on-demand finalize unit is always visible without a reboot.
 
  -- carbrf <carbrf@gmail.com>  Mon, 06 Jul 2026 14:00:00 -0400

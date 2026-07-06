@@ -32,14 +32,19 @@ case "$1" in
 		dpkg-trigger update-workbench
 
 		########################################################################
-		# The systemd units are enabled and daemon-reloaded by the
-		# dh_installsystemd snippet appended to this script (see
-		# debian/rules; --no-start keeps them from running at
-		# install time). The boot-time omv-oar-finalize.service runs at
-		# boot; the omv-oar-finalize@.service instances are started on
-		# demand by the engine and have no [Install] section, so they
-		# are not enabled here.
+		# Reload systemd so the freshly installed unit files are visible,
+		# then enable the boot-time finalize unit. The template unit
+		# omv-oar-finalize@.service has no [Install] section and its
+		# instances are started on demand by the engine, so it is not
+		# enabled here. Nothing is started now; omv-oar-finalize.service
+		# runs at the next boot.
 		########################################################################
+		if [ -d /run/systemd/system ]; then
+			systemctl daemon-reload >/dev/null 2>&1 || true
+		fi
+		if [ -x /usr/bin/deb-systemd-helper ]; then
+			deb-systemd-helper enable omv-oar-finalize.service >/dev/null 2>&1 || true
+		fi
 	;;
 
 	abort-upgrade|abort-remove|abort-deconfigure)

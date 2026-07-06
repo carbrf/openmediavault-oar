@@ -6,11 +6,11 @@
 %:
 	dh $@ --with python3
 
-# Enable + daemon-reload the finalize units, but do not start them at
-# install time: omv-oar-finalize.service runs at boot and the
-# omv-oar-finalize@.service instances are started on demand.
+# The finalize units are enabled and daemon-reloaded from the maintainer
+# scripts (postinst/postrm). dh_installsystemd does not pick up units
+# installed under /usr/lib/systemd/system in this debhelper, so disable
+# it explicitly to avoid partial/duplicate snippets.
 override_dh_installsystemd:
-	dh_installsystemd --no-start
 
 # Never ship bytecode caches; dh_python3 recompiles the modules under
 # dist-packages on the target at install time.
