@@ -1,13 +1,18 @@
 openmediavault-oar (8.1.0~beta6-1) stable; urgency=medium
 
   * Delete now dismantles a pool independently of its GPT partition
-    labels. It derives the tier arrays from the volume group's PVs and
-    their members from the live block-device tree, so a pool whose labels
-    are missing or wrong (e.g. one created before beta5) is still fully
-    torn down -- arrays stopped, superblocks zeroed, disks wiped -- rather
-    than leaving an assembled array and RAID metadata behind. Combined
-    with beta5 this means a pre-beta5 pool can simply be deleted and
-    recreated.
+    labels: the tier arrays come from the volume group's PVs and their
+    members from the array's /proc/mdstat member list, so a pool whose
+    labels are missing or wrong (e.g. one created before beta5) is still
+    fully torn down -- arrays stopped, superblocks zeroed, disks wiped --
+    instead of leaving an assembled array and RAID metadata behind.
+    Combined with beta5 this means a pre-beta5 pool can just be deleted
+    and recreated.
+  * A --json command now writes only its JSON result to stdout and sends
+    execution progress to stderr. This fixes a scrub started from the web
+    UI (the RPC parses the command's stdout as JSON, which the streamed
+    progress previously corrupted) and makes the CLI safely scriptable;
+    the RPC still merges stderr for its streaming progress dialog.
   * Restrict pool names to 24 characters. The GPT partition name field
     holds 36 UTF-16 units and the "oar@<pool>@t<NN>" label adds 8 chars of
     framing; a longer name was silently truncated by sgdisk, breaking

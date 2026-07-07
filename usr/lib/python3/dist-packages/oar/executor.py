@@ -55,20 +55,31 @@ def format_plan(steps: Iterable[Step]) -> list:
 
 
 def _print(line: str) -> None:
+    """Machine-readable output (dry-run plan) -> stdout."""
     sys.stdout.write(line + "\n")
     sys.stdout.flush()
 
 
+def _log(line: str) -> None:
+    """Human progress -> stderr, so a ``--json`` command's stdout stays
+    pure JSON for callers that parse it (the RPC ``scrub`` decoder, the
+    e2e harness, ad-hoc scripts). The RPC merges stderr into stdout for
+    its streaming progress dialog, so nothing is lost there."""
+    sys.stderr.write(line + "\n")
+    sys.stderr.flush()
+
+
 def _run(argv: Sequence[str]) -> int:
-    """Run one command, child stdout/stderr inherited (streamed)."""
+    """Run one command with its stdout AND stderr streamed to our
+    stderr, keeping our stdout clean for the final JSON result."""
     env = dict(os.environ, LC_ALL="C.UTF-8", LANG="C.UTF-8")
     sys.stdout.flush()
     sys.stderr.flush()
     proc = subprocess.run(
         list(argv),
         stdin=subprocess.DEVNULL,
-        stdout=None,
-        stderr=None,
+        stdout=2,
+        stderr=2,
         env=env,
         check=False,
     )
@@ -81,18 +92,21 @@ def run_steps(steps: Iterable[Step], dry_run: bool = False) -> None:
     Raises :class:`ExecutorError` on the first fatal failure. A step
     with ``fallback_argv`` gets a second chance with the fallback
     command; a step with ``check`` False only logs its failure.
+
+    Execution progress goes to stderr (see :func:`_log`); only the
+    ``dry_run`` plan is written to stdout.
     """
     if dry_run:
         for line in format_plan(steps):
             _print(line)
         return
     for step in steps:
-        _print(">>> %s" % shlex.join(step.argv))
+        _log(">>> %s" % shlex.join(step.argv))
         rc = _run(step.argv)
         if rc == 0:
             continue
         if step.fallback_argv is not None:
-            _print(
+            _log(
                 "WARNING: command failed (exit %d), trying fallback: %s"
                 % (rc, shlex.join(step.fallback_argv))
             )
@@ -100,6 +114,6 @@ def run_steps(steps: Iterable[Step], dry_run: bool = False) -> None:
             if rc == 0:
                 continue
         if not step.check:
-            _print("NOTICE: non-fatal command failed (exit %d)" % rc)
+            _log("NOTICE: non-fatal command failed (exit %d)" % rc)
             continue
         raise ExecutorError(step, rc)
