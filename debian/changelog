@@ -1,3 +1,24 @@
+openmediavault-oar (8.1.0~beta6-1) stable; urgency=medium
+
+  * Delete now dismantles a pool independently of its GPT partition
+    labels. It derives the tier arrays from the volume group's PVs and
+    their members from the live block-device tree, so a pool whose labels
+    are missing or wrong (e.g. one created before beta5) is still fully
+    torn down -- arrays stopped, superblocks zeroed, disks wiped -- rather
+    than leaving an assembled array and RAID metadata behind. Combined
+    with beta5 this means a pre-beta5 pool can simply be deleted and
+    recreated.
+  * Restrict pool names to 24 characters. The GPT partition name field
+    holds 36 UTF-16 units and the "oar@<pool>@t<NN>" label adds 8 chars of
+    framing; a longer name was silently truncated by sgdisk, breaking
+    discovery. The create form and RPC validation enforce the new limit.
+  * Docs: note that a disk which previously held a filesystem should have
+    that filesystem removed via Storage -> File Systems before it is added
+    to a pool, so no stale /srv mount-point directory or mount-wait
+    reference is left behind.
+
+ -- carbrf <carbrf@gmail.com>  Mon, 06 Jul 2026 17:00:00 -0400
+
 openmediavault-oar (8.1.0~beta5-1) stable; urgency=high
 
   * Critical: fix pool/tier discovery on real disks. GPT partition labels

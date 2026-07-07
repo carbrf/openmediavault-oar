@@ -182,8 +182,8 @@ class LayoutStructureTestCase(unittest.TestCase):
 
     def test_pool_name_validation(self):
         layout.validate_pool_name("tank")
-        layout.validate_pool_name("a" * 32)
-        for bad in ("", "0tank", "-tank", "a" * 33, "ta:nk", "ta nk"):
+        layout.validate_pool_name("a" * 24)
+        for bad in ("", "0tank", "-tank", "a" * 25, "ta:nk", "ta nk", "ta@nk"):
             with self.assertRaises(LayoutError, msg=bad):
                 layout.validate_pool_name(bad)
 
@@ -205,8 +205,14 @@ class LayoutStructureTestCase(unittest.TestCase):
         # sgdisk's --change-name splits its argument on EVERY colon, so a
         # colon-separated label is silently truncated by real sgdisk; the
         # label must never contain one.
-        for pool, index in (("tank", 0), ("a" * 32, 99)):
+        for pool, index in (("tank", 0), ("a" * 24, 99)):
             self.assertNotIn(":", layout.partlabel(pool, index))
+
+    def test_max_length_label_fits_gpt(self):
+        # A GPT partition NAME field is 36 UTF-16 units; a longer rendered
+        # label is silently truncated by sgdisk, so the longest legal pool
+        # name must still render within that limit.
+        self.assertLessEqual(len(layout.partlabel("a" * 24, 0)), 36)
 
 
 class PreviewTestCase(unittest.TestCase):

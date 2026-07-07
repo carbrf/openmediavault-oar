@@ -90,6 +90,15 @@ protected yet (e.g. the top of a single largest disk) is reported as
 *Unallocatable* and is used automatically once enough disks provide space at
 that tier.
 
+> **Before pooling a disk that previously held a filesystem**, remove that
+> filesystem through *Storage → File Systems* (unmount, then delete) first.
+> Creating a pool wipes the raw disks, but it does not reach into the rest
+> of OMV to retract records that pointed at the old filesystem — a stale
+> `/srv/dev-disk-by-uuid-<old-uuid>` mount-point directory (and references
+> such as a Docker mount-wait dependency) can otherwise linger. The create
+> form only offers disks with no filesystem/partition signature, so wiping
+> or deleting the old filesystem first is the clean path.
+
 ### Manage a pool
 
 *Storage → Open Adaptive RAID* lists every pool with live state

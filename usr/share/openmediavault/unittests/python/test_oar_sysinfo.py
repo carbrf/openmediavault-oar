@@ -38,6 +38,7 @@ from oar.sysinfo import (
     pool_layout,
     pool_names,
     pool_status,
+    pool_teardown,
     pool_tiers,
     stale_slices,
     vg_tags,
@@ -652,6 +653,104 @@ class PoolLayoutTestCase(unittest.TestCase):
         # RAID5 net capacity, and no wasted space for 10/20/20.
         self.assertEqual(lay.usable_capacity, 2 * T0_HEIGHT + T1_HEIGHT)
         self.assertEqual(lay.unallocatable_bytes, 0)
+
+
+# -----------------------------------------------------------------------
+# pool_teardown: label-independent dismantle target discovery.
+# -----------------------------------------------------------------------
+
+def _teardown_state(labels=True):
+    """A two-disk pool exactly as ``collect()`` presents it: md126 (a
+    RAID5, and the VG's single PV) spans one slice on sdb and one on sdc,
+    with the data LV on top.
+
+    On a live system lsblk repeats the md once under EACH member
+    partition, but ``parse_lsblk`` dedupes it by kname -- so in
+    ``state.devices`` the md node survives EXACTLY ONCE, parented under
+    only ONE member (sdb1). The authoritative, complete member list
+    therefore lives only in /proc/mdstat, which is what ``pool_teardown``
+    must consult to recover every member; the deduped block-device tree
+    alone reaches just the single surviving member.
+
+    ``labels=False`` truncates every partlabel to the bare "oar" written
+    by the pre-fix partitioner, so partlabel discovery (pool_tiers) finds
+    nothing and only the PV + mdstat path can recover the pool -- exactly
+    what a pre-beta5 pool presents.
+    """
+    part_label = "oar@tank@t00" if labels else "oar"
+    lv = _lsblk_node(
+        "tank-data", LV_SIZE, "lvm", kname="dm-0", path="/dev/dm-0",
+        pkname="md126", fstype="btrfs", mountpoint=TANK_MNT,
+    )
+    md = _lsblk_node(
+        "md126", T0_HEIGHT, "raid5", pkname="sdb1",
+        fstype="LVM2_member", children=[lv],
+    )
+
+    def _part(disk, children):
+        return _lsblk_node(
+            "%s1" % disk, T0_HEIGHT, "part", pkname=disk,
+            partlabel=part_label, parttype=PART_GUID,
+            fstype="linux_raid_member", children=children,
+        )
+
+    # md126 is nested under sdb1 only (its single surviving parent after
+    # lsblk dedup); sdc1 is a bare member partition with no md child.
+    tree = {"blockdevices": [
+        _lsblk_node("sdb", 10 * GiB, "disk", children=[_part("sdb", [md])]),
+        _lsblk_node("sdc", 10 * GiB, "disk", children=[_part("sdc", [])]),
+    ]}
+
+    return SystemState(
+        devices=parse_lsblk(tree),
+        mdstat={
+            "md126": {
+                "active": True, "level": "raid5", "slots": 2, "up": 2,
+                "members": {
+                    "sdb1": {"faulty": False, "spare": False},
+                    "sdc1": {"faulty": False, "spare": False},
+                },
+            }
+        },
+        vgs=[{"vg_name": "tank", "vg_tags": "omv-oar"}],
+        pvs=[{"pv_name": "/dev/md126", "vg_name": "tank"}],
+        lvs=[{"lv_name": "data", "vg_name": "tank",
+              "lv_size": str(LV_SIZE), "lv_path": "/dev/tank/data"}],
+    )
+
+
+class PoolTeardownTestCase(unittest.TestCase):
+    """Contract: teardown targets (tier arrays, their member partitions,
+    the member disks) come from the VG's PVs and /proc/mdstat, NOT from
+    GPT partlabels -- so a pool whose labels were truncated to bare "oar"
+    by the pre-fix partitioner is still fully dismantled, even though
+    lsblk dedup leaves the md linked to only one member in the tree."""
+
+    def _assert_full_tank(self, state):
+        arrays, parts, disks = pool_teardown(state, "tank")
+        self.assertEqual([a.kname for a in arrays], ["md126"])
+        self.assertEqual([p.path for p in parts], ["/dev/sdb1", "/dev/sdc1"])
+        self.assertEqual([d.path for d in disks], ["/dev/sdb", "/dev/sdc"])
+
+    def test_labeled_pool_full_teardown(self):
+        self._assert_full_tank(_teardown_state(labels=True))
+
+    def test_truncated_labels_still_full_teardown(self):
+        # Regression (pre-beta5 pool): every partlabel is truncated to
+        # "oar" so partlabel discovery yields nothing, AND lsblk dedup
+        # leaves the md parented under only sdb1 -- so the block-device
+        # tree alone reaches just that one member. The /proc/mdstat member
+        # list must still recover BOTH partitions and BOTH disks. A
+        # partlabel-only teardown returns three empty lists here; a
+        # tree-only teardown drops sdc1 and sdc.
+        state = _teardown_state(labels=False)
+        self.assertEqual(pool_tiers(state, "tank"), {})
+        self._assert_full_tank(state)
+
+    def test_unknown_pool_yields_empty(self):
+        self.assertEqual(
+            pool_teardown(_teardown_state(), "ghost"), ([], [], [])
+        )
 
 
 # -----------------------------------------------------------------------

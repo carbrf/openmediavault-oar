@@ -648,8 +648,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
         raise EngineError(
             "pool %s is mounted at %s; use --force" % (pool, mountpoint)
         )
-    tiers = sysinfo.pool_tiers(state, pool)
-    disks = sysinfo.pool_disks(state, pool)
+    arrays, member_parts, disks = sysinfo.pool_teardown(state, pool)
     lv_row = next(
         (
             r
@@ -671,24 +670,34 @@ def cmd_delete(args: argparse.Namespace) -> int:
             steps.append(
                 Step(("pvremove", "-y", str(row.get("pv_name"))), "remove PV")
             )
-    for index, tier in sorted(tiers.items()):
-        if tier.md is not None:
-            md = tier.md.path or "/dev/%s" % tier.md.kname
-            steps.append(Step(("mdadm", "--stop", md), "stop array"))
-    for index, tier in sorted(tiers.items()):
-        for part in tier.partitions:
-            steps.append(
-                Step(
-                    ("mdadm", "--zero-superblock", part.path),
-                    "zero superblock",
-                    check=False,
-                )
+    # Stop the tier arrays, zero their members' superblocks and wipe the
+    # member disks. Targets come from pool_teardown (the VG's PVs plus
+    # the live block-device tree), so a pool whose GPT partlabels are
+    # missing or wrong is still torn down completely instead of leaving
+    # an assembled array and RAID superblocks behind.
+    for md in arrays:
+        md_path = md.path or "/dev/%s" % md.kname
+        steps.append(
+            Step(("mdadm", "--stop", md_path), "stop array %s" % md_path)
+        )
+    for part in member_parts:
+        steps.append(
+            Step(
+                ("mdadm", "--zero-superblock", part.path),
+                "zero superblock on %s" % part.path,
+                check=False,
             )
+        )
     for disk in disks:
         steps.append(
-            Step(("sgdisk", "--zap-all", disk.path), "zap partition table")
+            Step(
+                ("sgdisk", "--zap-all", disk.path),
+                "zap partition table on %s" % disk.path,
+            )
         )
-        steps.append(Step(("wipefs", "-a", disk.path), "wipe signatures"))
+        steps.append(
+            Step(("wipefs", "-a", disk.path), "wipe signatures on %s" % disk.path)
+        )
     executor.run_steps(steps, dry_run=args.dry_run)
     if args.dry_run:
         return 0

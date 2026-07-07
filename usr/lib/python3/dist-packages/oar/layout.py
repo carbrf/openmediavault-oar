@@ -53,8 +53,13 @@ SECTOR_SIZE: int = 512
 #: GPT partition type GUID for OAR slices.
 PART_TYPE_GUID: str = "A19D880F-05FC-4D3B-A006-743F0F84911E"
 
-#: Pool name = VG name. No colon: partlabel parsing relies on it.
-POOL_NAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+_.-]{0,31}$")
+#: Pool name = VG name. Two constraints:
+#:  - No '@': it is the partlabel field separator (see partlabel()); the
+#:    charset below already excludes it.
+#:  - Max 24 chars: the GPT partition NAME field is 36 UTF-16 units and
+#:    the rendered label "oar@<pool>@t<NN>" adds 8 chars of framing, so a
+#:    longer name is silently truncated by sgdisk and breaks discovery.
+POOL_NAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+_.-]{0,23}$")
 
 RAID_LEVEL: str = "raid5"
 

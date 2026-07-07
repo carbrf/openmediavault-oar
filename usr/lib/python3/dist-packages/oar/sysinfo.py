@@ -33,7 +33,7 @@ import os
 import re
 import subprocess
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 from . import layout
 
@@ -405,6 +405,66 @@ def pool_disks(state: SystemState, pool: str) -> List[BlockDevice]:
             if parent is not None:
                 disks[parent.kname] = parent
     return sorted(disks.values(), key=lambda d: d.path)
+
+
+def pool_teardown(
+    state: SystemState, pool: str
+) -> Tuple[List[BlockDevice], List[BlockDevice], List[BlockDevice]]:
+    """Everything needed to dismantle ``pool``, discovered INDEPENDENTLY
+    of GPT partlabels so a pool with missing or wrong labels (e.g. one
+    created before the partlabel format was fixed) can still be deleted
+    cleanly: (tier md arrays, their member partitions, their whole
+    disks).
+
+    Sources, unioned for robustness: the tier md arrays are the volume
+    group's PVs (plus any md found via partlabels); their member
+    partitions come from /proc/mdstat (the authoritative member list --
+    NOT the lsblk child tree, which collapses the repeated md node onto a
+    single member and would miss the rest), plus the block-device tree
+    and partlabel discovery as fallbacks for a stopped/label-correct
+    array.
+    """
+    arrays: Dict[str, BlockDevice] = {}
+    for row in state.pvs:
+        if str(row.get("vg_name")) != pool:
+            continue
+        dev = state.device_by_path(str(row.get("pv_name")))
+        if dev is not None and (
+            dev.type.startswith("raid") or dev.kname.startswith("md")
+        ):
+            arrays[dev.kname] = dev
+    tiers = pool_tiers(state, pool)
+    for tier in tiers.values():
+        if tier.md is not None:
+            arrays[tier.md.kname] = tier.md
+    parts: Dict[str, BlockDevice] = {}
+    for md in arrays.values():
+        # Authoritative: every device the array reports as a member.
+        for member_kname in state.mdstat.get(md.kname, {}).get("members", {}):
+            dev = state.device_by_kname(member_kname)
+            if dev is not None:
+                parts[dev.kname] = dev
+        # Fallback: partitions the block-device tree links to this md
+        # (covers a stopped array absent from mdstat; the dedup means
+        # this typically only recovers one member, hence mdstat above).
+        for dev in state.devices:
+            if dev.type == "part" and any(
+                c.kname == md.kname for c in state.children(dev.kname)
+            ):
+                parts[dev.kname] = dev
+    for tier in tiers.values():
+        for part in tier.partitions:
+            parts[part.kname] = part
+    disks: Dict[str, BlockDevice] = {}
+    for part in parts.values():
+        parent = state.device_by_kname(part.pkname)
+        if parent is not None:
+            disks[parent.kname] = parent
+    return (
+        sorted(arrays.values(), key=lambda d: d.path or d.kname),
+        sorted(parts.values(), key=lambda d: d.path),
+        sorted(disks.values(), key=lambda d: d.path),
+    )
 
 
 def pool_layout(state: SystemState, pool: str) -> layout.Layout:
