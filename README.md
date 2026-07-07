@@ -20,8 +20,8 @@ already-running OMV 8.x installation at any time. No reinstall, no reboot.
 ### Install
 
 ```sh
-wget https://github.com/carbrf/openmediavault-oar/releases/download/v8.1.0-beta5/openmediavault-oar_8.1.0.beta5-1_all.deb
-sudo apt-get install ./openmediavault-oar_8.1.0.beta5-1_all.deb
+wget https://github.com/carbrf/openmediavault-oar/releases/download/v8.1.0-beta6/openmediavault-oar_8.1.0.beta6-1_all.deb
+sudo apt-get install ./openmediavault-oar_8.1.0.beta6-1_all.deb
 ```
 
 That's it. The package's install hooks automatically restart `omv-engined`
@@ -38,7 +38,7 @@ exactly this purpose, no extra repository hosting needed:
 ```sh
 # on the OMV host, as root
 sudo wget -P /var/cache/openmediavault/archives \
-  https://github.com/carbrf/openmediavault-oar/releases/download/v8.1.0-beta5/openmediavault-oar_8.1.0.beta5-1_all.deb
+  https://github.com/carbrf/openmediavault-oar/releases/download/v8.1.0-beta6/openmediavault-oar_8.1.0.beta6-1_all.deb
 cd /var/cache/openmediavault/archives && sudo apt-ftparchive packages . > Packages && sudo apt-ftparchive release . > Release
 ```
 
