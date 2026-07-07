@@ -471,9 +471,10 @@ def plan_grow(pool: str, layout: Layout, new_disks: Sequence[Disk]) -> Plan:
     remainders + existing disks' unallocated tops) then forms NEW tiers
     where >= 2 disks overlap; the rest stays unallocatable.
 
-    PPL dance: each joined array is switched to bitmap consistency
-    before --add/--grow (the kernel refuses reshape while PPL is
-    active); ``finalize`` restores PPL afterwards.
+    PPL dance: each joined array has PPL cleared (consistency-policy
+    switched to 'resync') before --add/--grow because the kernel refuses
+    to reshape while PPL is active; ``finalize`` restores PPL (or falls
+    back to a write-intent bitmap) afterwards.
     """
     validate_pool_name(pool)
     if not new_disks:
@@ -576,9 +577,11 @@ def plan_grow(pool: str, layout: Layout, new_disks: Sequence[Disk]) -> Plan:
         ]
         steps.append(
             Step(
-                ("mdadm", "--grow", md, "--consistency-policy=bitmap"),
-                "switch %s to bitmap before reshape (PPL blocks reshape)"
-                % md,
+                ("mdadm", "--grow", md, "--consistency-policy=resync"),
+                "disable PPL on %s before reshape (the kernel refuses to "
+                "reshape a PPL array; 'resync' clears it, finalize restores "
+                "PPL afterwards). '--consistency-policy=bitmap' is NOT valid "
+                "for --grow." % md,
             )
         )
         steps.append(

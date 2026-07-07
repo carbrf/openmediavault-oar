@@ -256,13 +256,13 @@ class GoldenGrowTestCase(unittest.TestCase):
                 ],
                 ["udevadm", "settle"],
                 # PPL dance: the kernel refuses reshape while PPL is
-                # active, so switch to bitmap first; finalize restores
+                # active, so clear PPL with resync first; finalize restores
                 # PPL after the reshape.
                 [
                     "mdadm",
                     "--grow",
                     "/dev/md/tank-t00",
-                    "--consistency-policy=bitmap",
+                    "--consistency-policy=resync",
                 ],
                 ["mdadm", "--add", "/dev/md/tank-t00", "/dev/sde1"],
                 ["mdadm", "--grow", "/dev/md/tank-t00", "--raid-devices=4"],
@@ -270,7 +270,7 @@ class GoldenGrowTestCase(unittest.TestCase):
                     "mdadm",
                     "--grow",
                     "/dev/md/tank-t01",
-                    "--consistency-policy=bitmap",
+                    "--consistency-policy=resync",
                 ],
                 ["mdadm", "--add", "/dev/md/tank-t01", "/dev/sde2"],
                 ["mdadm", "--grow", "/dev/md/tank-t01", "--raid-devices=3"],
@@ -358,7 +358,7 @@ class GrowScenarioTestCase(unittest.TestCase):
                     "mdadm",
                     "--grow",
                     "/dev/md/tank-t00",
-                    "--consistency-policy=bitmap",
+                    "--consistency-policy=resync",
                 ],
                 ["mdadm", "--add", "/dev/md/tank-t00", "/dev/sde1"],
                 ["mdadm", "--grow", "/dev/md/tank-t00", "--raid-devices=4"],
