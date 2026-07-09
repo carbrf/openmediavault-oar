@@ -1,5 +1,13 @@
 openmediavault-oar (8.1.0~beta6-1) stable; urgency=medium
 
+  * Critical: fix grow. The pre-reshape step ran "mdadm --grow <md>
+    --consistency-policy=bitmap", which mdadm rejects outright, so growing
+    a pool always failed. The kernel does refuse to reshape a PPL array,
+    so PPL is now cleared with --consistency-policy=resync before the
+    reshape; finalize restores PPL (or falls back to a write-intent
+    bitmap) afterwards. Found by the first full run of the shipped
+    e2e-loopback lifecycle test, whose own output-capture bug (command
+    echoes corrupting the JSON it parses) is also fixed.
   * Delete now dismantles a pool independently of its GPT partition
     labels: the tier arrays come from the volume group's PVs and their
     members from the array's /proc/mdstat member list, so a pool whose
